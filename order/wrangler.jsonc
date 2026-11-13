@@ -1,0 +1,11 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "arka-dhama-order",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": true,
+  "routes": [{ "pattern": "booking.supertalk.dev", "custom_domain": true }],
+  "durable_objects": { "bindings": [{ "name": "KITCHEN", "class_name": "Kitchen" }] },
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "arka-dhama-order-media" }],
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Kitchen"] }]
+}
