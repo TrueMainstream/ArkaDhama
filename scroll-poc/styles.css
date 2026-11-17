@@ -37,8 +37,50 @@ body { overflow: hidden; }
 .waters {
   position: absolute;
   inset: 0;
-  z-index: 0;
+  z-index: 1;
   pointer-events: none;
+}
+
+/* The portrait belongs to Events alone, and sits behind that river's own
+   colour. A window cut in the colour shows it. It can never show a neighbour. */
+.portrait {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-color: #6e4b32;
+  background-position: center 30%;
+  background-size: cover;
+  background-repeat: no-repeat;
+  pointer-events: none;
+  clip-path: inset(100%);
+}
+
+/* The standing figure is full length. Fit him whole, head included,
+   rather than cropping the top off to fill the window. */
+.portrait[data-window="portrait"] {
+  background-position: center top;
+  background-size: contain;
+  background-repeat: no-repeat;
+}
+
+/* The second photograph is fixed to the page: it covers the whole channel
+   and is clipped to the window each frame, so the photo itself never
+   scrolls even as the window moves. It shares the Events window with the
+   standing portrait, never a neighbouring river. */
+.portrait[data-window="india"] {
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+/* The Events window: an SVG mask on this river's colour alone. White keeps
+   the waters, black reveals the portrait behind them. Stage-pixel rect
+   coordinates come from main.js; the mask leaves with plain layout. */
+.mask-defs { position: absolute; width: 0; height: 0; }
+
+.stage.is-river .col-body .waters {
+  -webkit-mask: url(#events-mask);
+  mask: url(#events-mask);
 }
 
 .scroller {
@@ -108,6 +150,28 @@ body { overflow: hidden; }
 .scene-key h2 {
   font-size: clamp(2.3rem, 5.2vw, 5.2rem);
   max-width: 14ch;
+}
+
+/* A posted event is framed as a card, not read as river copy: a light border
+   and a faint wash set it apart while the river's colours stay untouched. */
+.event-card .scene-copy {
+  border: 1px solid rgba(244, 239, 230, 0.65);
+  background: rgba(244, 239, 230, 0.08);
+  padding: 1rem;
+  margin-bottom: 2rem;
+}
+
+/* The frame does the shouting; the title stays quiet. The link keeps the
+   page's ink, underlined only, so it reads as a link, not a new colour. */
+.event-card .scene-copy h2 {
+  font-size: 1.35rem;
+  max-width: none;
+}
+
+.event-card .scene-copy h2 a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.3em;
 }
 
 .col-head p, .scene-copy p {
