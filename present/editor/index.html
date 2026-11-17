@@ -22,21 +22,17 @@
 </header>
 
 <main class="work">
-  <section class="lane" aria-label="The selected river, top layer above the still layer">
-    <div class="pane-wrap" id="wrap-top">
-      <h2 class="pane-label">Top layer</h2>
-      <div class="pane" id="pane-top"></div>
-    </div>
-    <div class="pane-wrap" id="wrap-still">
-      <h2 class="pane-label">Still layer</h2>
-      <div class="pane" id="pane-still"></div>
+  <section class="lane" aria-label="The selected river">
+    <div class="pane-wrap" id="wrap-canvas">
+      <h2 class="pane-label" id="pane-label">Top layer</h2>
+      <div class="pane" id="pane"></div>
     </div>
   </section>
 
   <aside class="panel" aria-label="River and block controls">
     <section class="group">
       <h3>Blocks</h3>
-      <p class="hint">A new block lands on the layer chosen by the tabs at the foot of the page.</p>
+      <p class="hint">The tabs at the foot of the page switch which layer of this same page you are editing. A new block lands on the layer that is showing.</p>
       <div class="row">
         <button type="button" id="add-text">Add text</button>
         <button type="button" id="add-image">Add image</button>
@@ -69,7 +65,7 @@
      parsed. editor.js first asks the worker for the live document; doc.js
      is the seed it copies when nothing has been saved. If neither arrives,
      editor.js stops the page on the words "Document unavailable." -->
-<script type="module" src="../doc.js"></script>
+<script type="module" src="/present/doc.js"></script>
 <script type="module" src="/editor/editor.js"></script>
 </body>
 </html>

@@ -3,13 +3,12 @@
 // that copy in memory. Save writes the copy back; Revert and a restore
 // from History replace it with an earlier revision.
 //
-// Three rivers are editable this round — Events, Training, Books — out of
-// the nine the document carries. The selected river is shown twice: its
-// top layer above, its still layer (the document's "bottom") below. The
-// tabs at the foot of the page choose which pane receives a new block;
-// both panes stay visible either way. A mask on the top layer is a hole
-// onto that same river's still layer. Placement is by percentage fields;
-// there is no drag this round.
+// Three rivers are editable — Events, Training, Books — out of the nine
+// the document carries. One canvas shows the selected river. The tabs at
+// the foot of the page switch which layer of that same canvas is showing,
+// the way a spreadsheet switches sheets. A mask exists only on the top
+// layer, and it is a hole onto the still layer at the same place.
+// Placement is by percentage fields. There is no drag.
 
 const RIVER_NAMES = [
   ["events", "Events"],
@@ -35,8 +34,8 @@ let layer = "top"; // the pane the tabs have chosen for new blocks
 let selectedId = null;
 
 const riversNav = document.getElementById("rivers");
-const paneTop = document.getElementById("pane-top");
-const paneStill = document.getElementById("pane-still");
+const pane = document.getElementById("pane");
+const paneLabel = document.getElementById("pane-label");
 const fieldsBox = document.getElementById("block-fields");
 const addMaskButton = document.getElementById("add-mask");
 const deleteButton = document.getElementById("delete-selected");
@@ -59,34 +58,23 @@ function findSelected() {
   return null;
 }
 
-// ---- The two panes ------------------------------------------------------
+// ---- The one canvas -----------------------------------------------------
 
 function drawPanes() {
   const river = currentRiver();
-  paneTop.style.background = river.color;
-  paneStill.style.background = river.color;
-  drawLayer(river.top, paneTop, true);
-  drawLayer(river.bottom, paneStill, false);
-  drawMaskReveals(river);
-}
-
-function drawLayer(blocks, pane, isTop) {
+  pane.style.background = river.color;
+  paneLabel.textContent = layer === "top" ? "Top layer" : "Still layer";
   pane.replaceChildren();
+  const blocks = layer === "top" ? river.top : river.bottom;
   for (const block of blocks) {
-    // A mask belongs to the top layer only; the validator rejects one on
-    // the bottom, so the still pane never draws it.
-    if (block.type === "mask" && !isTop) continue;
+    if (block.type === "mask" && layer !== "top") continue;
     pane.append(blockElement(block));
   }
+  // On the top layer a mask is a hole onto this river's still layer, at
+  // the same place. The other layer is not a second page underneath.
+  if (layer === "top") drawMaskReveals(river);
 }
 
-// Each mask on the selected river's top layer is a hole onto that river's
-// still layer: the still blocks are copied into a full-pane layer clipped
-// to the mask's rectangle. The copied blocks keep their own x, y, w, h, so
-// a still image shows through the hole where it sits and the rest of the
-// still layer does not. Only currentRiver().bottom is ever copied — a mask
-// never reads another river — and an empty still layer leaves the hole
-// showing the pane background and nothing else.
 function drawMaskReveals(river) {
   for (const mask of river.top) {
     if (mask.type !== "mask") continue;
@@ -95,10 +83,12 @@ function drawMaskReveals(river) {
     reveal.style.clipPath =
       `inset(${mask.y}% ${100 - mask.x - mask.w}% ${100 - mask.y - mask.h}% ${mask.x}%)`;
     for (const block of river.bottom) {
-      if (block.type === "mask") continue; // the validator rejects one here
-      reveal.append(blockElement(block));
+      if (block.type === "mask") continue;
+      const copy = blockElement(block);
+      copy.classList.add("is-revealed");
+      reveal.append(copy);
     }
-    paneTop.append(reveal);
+    pane.append(reveal);
   }
 }
 
@@ -138,16 +128,12 @@ function blockElement(block) {
   return el;
 }
 
-for (const pane of [paneTop, paneStill]) {
-  // A click that reaches the pane itself, past every block, clears the
-  // selection.
-  pane.addEventListener("click", () => {
-    if (selectedId === null) return;
-    selectedId = null;
-    drawPanes();
-    drawFields();
-  });
-}
+pane.addEventListener("click", () => {
+  if (selectedId === null) return;
+  selectedId = null;
+  drawPanes();
+  drawFields();
+});
 
 // ---- The side panel -----------------------------------------------------
 
@@ -364,9 +350,8 @@ function drawTabs() {
   for (const button of document.querySelectorAll(".tab")) {
     button.setAttribute("aria-pressed", button.dataset.layer === layer ? "true" : "false");
   }
-  document.getElementById("wrap-top").classList.toggle("is-receiving", layer === "top");
-  document.getElementById("wrap-still").classList.toggle("is-receiving", layer === "bottom");
   syncMaskButton();
+  if (doc) drawPanes();
 }
 
 function syncMaskButton() {
@@ -525,7 +510,7 @@ async function start() {
     // then stop on the words.
     if (typeof window.seedDoc !== "function") {
       try {
-        await import("../doc.js");
+        await import("/present/doc.js");
       } catch (error) {
         console.warn("Presentation document unavailable.", error);
       }

@@ -75,11 +75,9 @@ button:disabled { opacity: 0.38; cursor: default; }
 .rivers button:hover { border-color: var(--line); opacity: 0.9; }
 .rivers button[aria-pressed="true"] { opacity: 1; border-color: var(--gold); }
 
-/* The lane: one column the width of a river, both layers stacked. The
-   column itself scrolls — a pane is a whole river lane, taller than the
-   screen — and its height stops at the space between the header bar and
-   the tabs. Content starts at the top so the scroll reaches every
-   block. */
+/* One canvas, the width of a river. The tabs switch which layer of this
+   same canvas is showing. The column scrolls because the canvas is a whole
+   lane, taller than the screen. */
 .work { flex: 1; display: flex; min-height: 0; }
 
 .lane {
@@ -102,9 +100,8 @@ button:disabled { opacity: 0.38; cursor: default; }
   text-transform: uppercase;
   color: var(--muted);
 }
-/* The pane whose layer is chosen by the tabs carries a small gold mark. */
-.pane-wrap.is-receiving .pane-label { color: var(--ink); }
-.pane-wrap.is-receiving .pane-label::after {
+.pane-label { color: var(--ink); }
+.pane-label::after {
   content: "";
   display: inline-block;
   width: 18px;
@@ -135,7 +132,7 @@ button:disabled { opacity: 0.38; cursor: default; }
    holding copies of the still layer's blocks at their own percentages.
    The layer itself never takes a pointer; the copied blocks still do. */
 .mask-reveal { position: absolute; inset: 0; pointer-events: none; }
-.mask-reveal .block { pointer-events: auto; }
+.mask-reveal .block { pointer-events: none; }
 .mask-tag {
   position: absolute;
   top: 4px;
