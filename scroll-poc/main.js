@@ -24,6 +24,9 @@ function renderDoc(doc) {
       if (!block || block.type !== "text" || typeof block.text !== "string") continue;
       const article = document.createElement("article");
       article.className = "scene";
+      // The first text block of a river is its title scene: col-head with
+      // an h1, so the river opens on its own name. Later blocks stay h2.
+      if (firstScene) article.classList.add("col-head");
       if (block.id) article.id = block.id;
       article.dataset.plate = channel.dataset.plate;
       if (block.x != null) article.dataset.x = String(block.x);
@@ -35,7 +38,7 @@ function renderDoc(doc) {
       const parts = block.text.split("\n\n");
       const eyebrow = document.createElement("span");
       eyebrow.className = "eyebrow";
-      const heading = document.createElement("h2");
+      const heading = document.createElement(firstScene ? "h1" : "h2");
       let body = "";
       if (parts.length >= 3) {
         eyebrow.textContent = parts[0];
