@@ -83,9 +83,10 @@
   <button type="button" data-go="spirit">Products</button>
 </nav>
 
-<!-- The presentation document. The present lane provides it; until that
-     merge this script 404s and the rivers simply run empty. -->
-<script src="../present/doc.js"></script>
-<script src="main.js"></script>
+<!-- The presentation document. Both scripts are modules so they run in
+     this order after the page is parsed: doc.js attaches the seed, then
+     main.js draws it. A classic script cannot read the exports. -->
+<script type="module" src="../present/doc.js"></script>
+<script type="module" src="main.js"></script>
 </body>
 </html>

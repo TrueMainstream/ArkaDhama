@@ -283,6 +283,14 @@ export function seedDoc() {
   return doc;
 }
 
+// scroll-poc loads this file as a classic script, not a module. The river
+// page calls these three off window. The exports above stay for the tests.
+if (typeof window !== "undefined") {
+  window.emptyDoc = emptyDoc;
+  window.validateDoc = validateDoc;
+  window.seedDoc = seedDoc;
+}
+
 function isObject(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }

@@ -14,7 +14,10 @@ function renderDoc(doc) {
   for (const [river, selector] of Object.entries(RIVER_SECTIONS)) {
     const channel = document.querySelector(selector);
     const scroller = channel && channel.querySelector(".scroller");
-    const top = rivers[river] && rivers[river].top;
+    const found = Array.isArray(rivers)
+      ? rivers.find((item) => item && item.id === river)
+      : rivers[river];
+    const top = found && found.top;
     if (!scroller || !Array.isArray(top)) continue;
     let firstScene = true;
     for (const block of top) {
@@ -29,12 +32,27 @@ function renderDoc(doc) {
       if (block.h != null) article.dataset.h = String(block.h);
       const copy = document.createElement("div");
       copy.className = "scene-copy";
+      const parts = block.text.split("\n\n");
       const eyebrow = document.createElement("span");
       eyebrow.className = "eyebrow";
-      eyebrow.textContent = block.eyebrow || "";
       const heading = document.createElement("h2");
-      heading.textContent = block.text;
+      let body = "";
+      if (parts.length >= 3) {
+        eyebrow.textContent = parts[0];
+        heading.textContent = parts[1];
+        body = parts.slice(2).join("\n\n");
+      } else if (parts.length === 2) {
+        heading.textContent = parts[0];
+        body = parts[1];
+      } else {
+        heading.textContent = parts[0] || "";
+      }
       copy.append(eyebrow, heading);
+      if (body) {
+        const paragraph = document.createElement("p");
+        paragraph.textContent = body;
+        copy.append(paragraph);
+      }
       article.append(copy);
       if (channel.id === "events" && firstScene) {
         // The Events window keys off .scene-window, so the first scene
@@ -47,14 +65,31 @@ function renderDoc(doc) {
   }
 }
 
-if (window.emptyDoc && window.seedDoc) renderDoc(window.seedDoc());
+// doc.js is a module and may finish after this file. Wait for it, then
+// draw once. A second pass would duplicate the scenes.
+async function drawSeed() {
+  if (!(window.emptyDoc && window.seedDoc)) {
+    try {
+      await import("../present/doc.js");
+    } catch (error) {
+      console.warn("Presentation document unavailable.", error);
+    }
+  }
+  if (window.emptyDoc && window.seedDoc) renderDoc(window.seedDoc());
+  bindEventsWindow();
+}
 
-const events = channels.findIndex((channel) => channel.querySelector(".scene-window"));
+let events = -1;
+let eventsType = [];
 const maskKeep = document.querySelector("#events-mask .mask-keep");
 const maskHole = document.querySelector("#events-mask .mask-hole");
-const eventsType = events >= 0
-  ? [...channels[events].querySelectorAll(".col-head, .scene-copy, .col-end")]
-  : [];
+
+function bindEventsWindow() {
+  events = channels.findIndex((channel) => channel.querySelector(".scene-window"));
+  eventsType = events >= 0
+    ? [...channels[events].querySelectorAll(".col-head, .scene-copy, .col-end")]
+    : [];
+}
 const portrait = window.matchMedia("(max-width: 800px) and (orientation: portrait)");
 const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
 
@@ -494,5 +529,7 @@ document.getElementById("pager").addEventListener("click", (event) => {
 
 portrait.addEventListener("change", ensure);
 reduce.addEventListener("change", ensure);
-applyHash();
-ensure();
+drawSeed().then(() => {
+  applyHash();
+  ensure();
+});
