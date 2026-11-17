@@ -75,16 +75,21 @@ button:disabled { opacity: 0.38; cursor: default; }
 .rivers button:hover { border-color: var(--line); opacity: 0.9; }
 .rivers button[aria-pressed="true"] { opacity: 1; border-color: var(--gold); }
 
-/* The lane: one column the width of a river, both layers stacked. */
+/* The lane: one column the width of a river, both layers stacked. The
+   column itself scrolls — a pane is a whole river lane, taller than the
+   screen — and its height stops at the space between the header bar and
+   the tabs. Content starts at the top so the scroll reaches every
+   block. */
 .work { flex: 1; display: flex; min-height: 0; }
 
 .lane {
   flex: 1;
   min-width: 0;
+  max-height: 100%;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   gap: 24px;
   padding: 20px;
 }
@@ -108,19 +113,29 @@ button:disabled { opacity: 0.38; cursor: default; }
   vertical-align: middle;
   background: var(--gold);
 }
+/* A pane is laid out at its full lane height, not squeezed to a strip, so
+   y percentages land blocks where they say, far down the lane. */
 .pane {
   position: relative;
-  height: 34vh;
+  height: 1400px;
   border: 1px solid var(--line);
   border-radius: 4px;
   overflow: hidden;
 }
 
-/* Blocks, in percentages of the lane. */
+/* Blocks, in percentages of the lane. A text block takes its h as a
+   minimum only — editor.js sets min-height from h — so a paragraph grows
+   instead of clipping; it stays absolutely placed. */
 .block { position: absolute; cursor: pointer; }
-.block.is-text { white-space: pre-wrap; line-height: 1.42; }
+.block.is-text { white-space: pre-wrap; line-height: 1.42; height: auto; }
 .block.is-image { background-size: cover; background-position: center; }
 .block.is-mask { border: 2px solid #f4efe6; background: transparent; }
+
+/* The mask reveal: a full-pane layer clipped to the mask's rectangle,
+   holding copies of the still layer's blocks at their own percentages.
+   The layer itself never takes a pointer; the copied blocks still do. */
+.mask-reveal { position: absolute; inset: 0; pointer-events: none; }
+.mask-reveal .block { pointer-events: auto; }
 .mask-tag {
   position: absolute;
   top: 4px;
