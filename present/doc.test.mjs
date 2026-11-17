@@ -67,6 +67,36 @@ test("a mask on the bottom layer fails", () => {
   assert.ok(result.errors.some((e) => e.includes("mask")));
 });
 
+// The shape the editor places: an event block on either layer. The public
+// page fetches the posts; the document only says which ones and how many.
+function withEventBlock(layer, overrides = {}) {
+  const doc = structuredClone(emptyDoc());
+  doc.rivers[0][layer].push({
+    id: "probe-event",
+    type: "event",
+    x: 8,
+    y: 40,
+    w: 84,
+    h: 30,
+    show: "upcoming",
+    limit: 5,
+    ...overrides,
+  });
+  return doc;
+}
+
+test('an event block with show "upcoming" passes on top and on bottom', () => {
+  for (const layer of ["top", "bottom"]) {
+    assert.deepEqual(validateDoc(withEventBlock(layer)), { ok: true }, layer);
+  }
+});
+
+test('an event block with show "maybe" fails', () => {
+  const result = validateDoc(withEventBlock("top", { show: "maybe" }));
+  assert.equal(result.ok, false);
+  assert.ok(result.errors.some((e) => e.includes("show")));
+});
+
 test("x of 120 fails", () => {
   const result = validateDoc(withEventsBlock({ x: 120 }));
   assert.equal(result.ok, false);

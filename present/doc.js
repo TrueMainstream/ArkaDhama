@@ -17,7 +17,7 @@ const RIVERS = [
   { id: "contact", label: "Contact", theme: "spirit", color: "#002040" },
 ];
 
-const BLOCK_TYPES = ["text", "image", "mask"];
+const BLOCK_TYPES = ["text", "image", "mask", "event"];
 
 export function emptyDoc() {
   return {
@@ -97,7 +97,7 @@ function validateBlock(block, where, layer, seen, errors) {
     seen.add(block.id);
   }
   if (!BLOCK_TYPES.includes(block.type)) {
-    errors.push(`${where}: type must be text, image, or mask.`);
+    errors.push(`${where}: type must be text, image, mask, or event.`);
   }
   for (const field of ["x", "y", "w", "h"]) {
     const value = block[field];
@@ -116,6 +116,22 @@ function validateBlock(block, where, layer, seen, errors) {
   }
   if (block.type === "image" && (typeof block.src !== "string" || !isSitePath(block.src))) {
     errors.push(`${where}: image blocks need a string src that is a site path.`);
+  }
+  // An event block carries no copy of its own: the public page fetches the
+  // posts, so the document only says which ones and how many.
+  if (block.type === "event") {
+    if (block.show !== "upcoming" && block.show !== "all") {
+      errors.push(`${where}: event blocks need show "upcoming" or "all".`);
+    }
+    if (
+      block.limit !== undefined &&
+      (typeof block.limit !== "number" ||
+        !Number.isFinite(block.limit) ||
+        block.limit < 1 ||
+        block.limit > 20)
+    ) {
+      errors.push(`${where}: limit must be a number from 1 to 20.`);
+    }
   }
   if (block.href !== undefined && !isAllowedHref(block.href)) {
     errors.push(
