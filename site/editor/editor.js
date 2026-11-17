@@ -1,14 +1,14 @@
-// The river editor, desktop only. It holds one copy of the seed document
-// and edits that copy in memory: nothing is fetched, nothing is written,
-// nothing is published. The Save and Revert buttons stay disabled with
-// "Not connected yet." until a later round wires them to the worker.
+// The river editor, desktop only. On load it takes the live document from
+// the worker, or the seed copy when nothing has been saved yet, and edits
+// that copy in memory. Save writes the copy back; Revert and a restore
+// from History replace it with an earlier revision.
 //
-// Three rivers are editable this round — Events, Training, Books — out of
-// the nine the document carries. The selected river is shown twice: its
-// top layer above, its still layer (the document's "bottom") below. The
-// tabs at the foot of the page choose which pane receives a new block;
-// both panes stay visible either way. Placement is by percentage fields;
-// there is no drag this round.
+// Three rivers are editable — Events, Training, Books — out of the nine
+// the document carries. One canvas shows the selected river. The tabs at
+// the foot of the page switch which layer of that same canvas is showing,
+// the way a spreadsheet switches sheets. A mask exists only on the top
+// layer, and it is a hole onto the still layer at the same place.
+// Placement is by percentage fields. There is no drag.
 
 const RIVER_NAMES = [
   ["events", "Events"],
@@ -34,11 +34,16 @@ let layer = "top"; // the pane the tabs have chosen for new blocks
 let selectedId = null;
 
 const riversNav = document.getElementById("rivers");
-const paneTop = document.getElementById("pane-top");
-const paneStill = document.getElementById("pane-still");
+const pane = document.getElementById("pane");
+const paneLabel = document.getElementById("pane-label");
 const fieldsBox = document.getElementById("block-fields");
 const addMaskButton = document.getElementById("add-mask");
 const deleteButton = document.getElementById("delete-selected");
+const saveButton = document.getElementById("save");
+const revertButton = document.getElementById("revert");
+const historyButton = document.getElementById("history");
+const statusLine = document.getElementById("status");
+const historyBox = document.getElementById("history-list");
 
 function currentRiver() {
   return doc.rivers.find((river) => river.id === riverId);
@@ -53,23 +58,37 @@ function findSelected() {
   return null;
 }
 
-// ---- The two panes ------------------------------------------------------
+// ---- The one canvas -----------------------------------------------------
 
 function drawPanes() {
   const river = currentRiver();
-  paneTop.style.background = river.color;
-  paneStill.style.background = river.color;
-  drawLayer(river.top, paneTop, true);
-  drawLayer(river.bottom, paneStill, false);
+  pane.style.background = river.color;
+  paneLabel.textContent = layer === "top" ? "Top layer" : "Still layer";
+  pane.replaceChildren();
+  const blocks = layer === "top" ? river.top : river.bottom;
+  for (const block of blocks) {
+    if (block.type === "mask" && layer !== "top") continue;
+    pane.append(blockElement(block));
+  }
+  // On the top layer a mask is a hole onto this river's still layer, at
+  // the same place. The other layer is not a second page underneath.
+  if (layer === "top") drawMaskReveals(river);
 }
 
-function drawLayer(blocks, pane, isTop) {
-  pane.replaceChildren();
-  for (const block of blocks) {
-    // A mask belongs to the top layer only; the validator rejects one on
-    // the bottom, so the still pane never draws it.
-    if (block.type === "mask" && !isTop) continue;
-    pane.append(blockElement(block));
+function drawMaskReveals(river) {
+  for (const mask of river.top) {
+    if (mask.type !== "mask") continue;
+    const reveal = document.createElement("div");
+    reveal.className = "mask-reveal";
+    reveal.style.clipPath =
+      `inset(${mask.y}% ${100 - mask.x - mask.w}% ${100 - mask.y - mask.h}% ${mask.x}%)`;
+    for (const block of river.bottom) {
+      if (block.type === "mask") continue;
+      const copy = blockElement(block);
+      copy.classList.add("is-revealed");
+      reveal.append(copy);
+    }
+    pane.append(reveal);
   }
 }
 
@@ -80,11 +99,13 @@ function blockElement(block) {
   el.style.top = `${block.y}%`;
   el.style.width = `${block.w}%`;
   if (block.type === "text") {
-    // A text block keeps its own height; w places the measure.
+    // A text block takes its h as a floor, never a clip: min-height from
+    // h, height auto, so a paragraph grows instead of being cut.
     el.textContent = block.text;
     el.style.fontFamily = block.font || DEFAULT_FONT;
     el.style.fontSize = block.fontSize || DEFAULT_FONT_SIZE;
     el.style.color = block.fontColor || DEFAULT_FONT_COLOR;
+    el.style.minHeight = `${block.h}%`;
   } else {
     el.style.height = `${block.h}%`;
     if (block.type === "image") {
@@ -107,16 +128,12 @@ function blockElement(block) {
   return el;
 }
 
-for (const pane of [paneTop, paneStill]) {
-  // A click that reaches the pane itself, past every block, clears the
-  // selection.
-  pane.addEventListener("click", () => {
-    if (selectedId === null) return;
-    selectedId = null;
-    drawPanes();
-    drawFields();
-  });
-}
+pane.addEventListener("click", () => {
+  if (selectedId === null) return;
+  selectedId = null;
+  drawPanes();
+  drawFields();
+});
 
 // ---- The side panel -----------------------------------------------------
 
@@ -333,14 +350,133 @@ function drawTabs() {
   for (const button of document.querySelectorAll(".tab")) {
     button.setAttribute("aria-pressed", button.dataset.layer === layer ? "true" : "false");
   }
-  document.getElementById("wrap-top").classList.toggle("is-receiving", layer === "top");
-  document.getElementById("wrap-still").classList.toggle("is-receiving", layer === "bottom");
   syncMaskButton();
+  if (doc) drawPanes();
 }
 
 function syncMaskButton() {
   addMaskButton.disabled = layer === "bottom";
   addMaskButton.title = layer === "bottom" ? "A mask on the still layer is invalid." : "";
+}
+
+// ---- Save, revert, history ----------------------------------------------
+
+// GET /api/doc answers with the document itself; the writing routes wrap
+// it as { body, saved_at }. Either shape is accepted, and only when it
+// carries rivers.
+function documentFrom(data) {
+  if (data && Array.isArray(data.rivers)) return data;
+  if (data && data.body && Array.isArray(data.body.rivers)) return data.body;
+  return null;
+}
+
+function setStatus(text) {
+  statusLine.textContent = text;
+}
+
+// A revert or restore hands back a whole document. The selection and the
+// open river may name ids it does not carry, so both settle somewhere safe
+// before the panes and fields are painted again.
+function adoptDoc(next) {
+  doc = next;
+  selectedId = null;
+  if (!currentRiver() && doc.rivers.length > 0) riverId = doc.rivers[0].id;
+  drawRiverButtons();
+  drawPanes();
+  drawFields();
+  drawColourButtons();
+}
+
+saveButton.addEventListener("click", async () => {
+  try {
+    const response = await fetch("/api/doc", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(doc),
+    });
+    if (!response.ok) throw new Error(`PUT /api/doc answered ${response.status}.`);
+    const saved = documentFrom(await response.json());
+    if (saved !== null) doc = saved; // the stored copy becomes the only state
+    setStatus("Saved.");
+  } catch (error) {
+    console.warn("Save failed.", error);
+    setStatus("Save failed.");
+  }
+});
+
+revertButton.addEventListener("click", async () => {
+  try {
+    const response = await fetch("/api/revert", { method: "POST" });
+    if (response.status === 409) {
+      setStatus("Nothing earlier to restore.");
+      return;
+    }
+    if (!response.ok) throw new Error(`POST /api/revert answered ${response.status}.`);
+    const previous = documentFrom(await response.json());
+    if (previous === null) throw new Error("Revert returned no document.");
+    adoptDoc(previous);
+    setStatus("Reverted.");
+  } catch (error) {
+    console.warn("Revert failed.", error);
+    setStatus("Revert failed.");
+  }
+});
+
+historyButton.addEventListener("click", () => {
+  if (!historyBox.hidden) {
+    historyBox.hidden = true;
+    return;
+  }
+  loadHistory();
+});
+
+async function loadHistory() {
+  try {
+    const response = await fetch("/api/history");
+    if (!response.ok) throw new Error(`GET /api/history answered ${response.status}.`);
+    drawHistory(await response.json());
+  } catch (error) {
+    console.warn("History failed.", error);
+    setStatus("History failed.");
+  }
+}
+
+function drawHistory(revisions) {
+  historyBox.replaceChildren();
+  if (revisions.length === 0) {
+    const none = document.createElement("p");
+    none.className = "hint";
+    none.textContent = "No saved versions yet.";
+    historyBox.append(none);
+  }
+  for (const revision of revisions) {
+    const row = document.createElement("div");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = revision.savedAt;
+    button.addEventListener("click", () => restoreAt(revision.savedAt));
+    row.append(button);
+    historyBox.append(row);
+  }
+  historyBox.hidden = false;
+}
+
+async function restoreAt(at) {
+  try {
+    const response = await fetch("/api/restore", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ at }),
+    });
+    if (!response.ok) throw new Error(`POST /api/restore answered ${response.status}.`);
+    const restored = documentFrom(await response.json());
+    if (restored === null) throw new Error("Restore returned no document.");
+    adoptDoc(restored);
+    setStatus("Restored.");
+  } catch (error) {
+    console.warn("Restore failed.", error);
+    setStatus("Restore failed.");
+  }
 }
 
 // ---- Start --------------------------------------------------------------
@@ -355,21 +491,37 @@ function stopUnavailable() {
 }
 
 async function start() {
-  // The page loads /present/doc.js as a module before this file; if the seed has
-  // not appeared (the file missing, or nothing attached), try once more,
-  // then stop on the words.
-  if (typeof window.seedDoc !== "function") {
-    try {
-      await import("/present/doc.js");
-    } catch (error) {
-      console.warn("Presentation document unavailable.", error);
+  // The live document wins when the worker has one. A 404, an unreachable
+  // worker, or a body without rivers falls through to the seed, and none
+  // of that stops the page.
+  let live = null;
+  try {
+    const response = await fetch("/api/doc");
+    if (response.ok) live = documentFrom(await response.json());
+  } catch (error) {
+    console.warn("Live document unavailable.", error);
+  }
+
+  if (live !== null) {
+    doc = live;
+  } else {
+    // The page loads ../doc.js as a module before this file; if the seed has
+    // not appeared (the file missing, or nothing attached), try once more,
+    // then stop on the words.
+    if (typeof window.seedDoc !== "function") {
+      try {
+        await import("/present/doc.js");
+      } catch (error) {
+        console.warn("Presentation document unavailable.", error);
+      }
     }
+    if (typeof window.seedDoc !== "function") {
+      stopUnavailable();
+      return;
+    }
+    doc = structuredClone(window.seedDoc()); // the copy is the only state
+    setStatus("Not saved yet.");
   }
-  if (typeof window.seedDoc !== "function") {
-    stopUnavailable();
-    return;
-  }
-  doc = structuredClone(window.seedDoc()); // the copy is the only state
   buildRiverButtons();
   drawRiverButtons();
   drawTabs();
