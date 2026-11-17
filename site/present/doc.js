@@ -6,15 +6,15 @@
 const SITE_ORIGIN = "https://www.srinivasarka.org/";
 
 const RIVERS = [
-  { id: "events", label: "Events & News", theme: "body", color: "#6e4b32" },
-  { id: "about", label: "About", theme: "spirit", color: "#6d2430" },
-  { id: "training", label: "Methods & Training", theme: "mind", color: "#3d4c68" },
-  { id: "communities", label: "Communities", theme: "spirit", color: "#6d2430" },
-  { id: "dhama", label: "Arka Dhama", theme: "spirit", color: "#6d2430" },
-  { id: "videos", label: "Videos", theme: "spirit", color: "#6d2430" },
-  { id: "books", label: "Books", theme: "spirit", color: "#6d2430" },
-  { id: "articles", label: "Articles", theme: "spirit", color: "#6d2430" },
-  { id: "contact", label: "Contact", theme: "spirit", color: "#6d2430" },
+  { id: "events", label: "Events & News", theme: "body", color: "#002040" },
+  { id: "about", label: "About", theme: "spirit", color: "#002040" },
+  { id: "training", label: "Methods & Training", theme: "mind", color: "#6a4e12" },
+  { id: "communities", label: "Communities", theme: "spirit", color: "#002040" },
+  { id: "dhama", label: "Arka Dhama", theme: "spirit", color: "#002040" },
+  { id: "videos", label: "Videos", theme: "spirit", color: "#002040" },
+  { id: "books", label: "Books", theme: "spirit", color: "#002040" },
+  { id: "articles", label: "Articles", theme: "spirit", color: "#002040" },
+  { id: "contact", label: "Contact", theme: "spirit", color: "#002040" },
 ];
 
 const BLOCK_TYPES = ["text", "image", "mask"];

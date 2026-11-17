@@ -6,6 +6,9 @@
   "routes": [
     { "pattern": "arka.supertalk.dev", "custom_domain": true }
   ],
+  "services": [
+    { "service": "arka-present", "binding": "PRESENT" }
+  ],
   "assets": {
     "directory": ".",
     "html_handling": "auto-trailing-slash",
