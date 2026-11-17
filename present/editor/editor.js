@@ -7,7 +7,9 @@
 // the document carries. One canvas shows the selected river. The tabs at
 // the foot of the page switch which layer of that same canvas is showing,
 // the way a spreadsheet switches sheets. A mask exists only on the top
-// layer, and it is a hole onto the still layer at the same place.
+// layer, and it is a hole onto the still layer at the same place. An event
+// block may sit on either layer; the canvas draws it as a labelled
+// rectangle, and fetching the posts stays the public page's job.
 // Placement is by percentage fields. There is no drag.
 
 const RIVER_NAMES = [
@@ -115,6 +117,15 @@ function blockElement(block) {
       tag.className = "mask-tag";
       tag.textContent = "Mask";
       el.append(tag);
+    } else if (block.type === "event") {
+      // A labelled rectangle, never a post list. The tag rides the mask's
+      // label style; the border is inline because editor.css is another
+      // lane's file.
+      el.style.border = "2px solid #f4efe6";
+      const tag = document.createElement("span");
+      tag.className = "mask-tag";
+      tag.textContent = `Events · ${block.show}`;
+      el.append(tag);
     }
   }
   el.title = block.id;
@@ -161,6 +172,7 @@ function drawFields() {
 
   if (block.type === "text") fieldsBox.append(textFields(block));
   if (block.type === "image") fieldsBox.append(srcField(block));
+  if (block.type === "event") fieldsBox.append(eventFields(block));
   fieldsBox.append(hrefField(block));
 }
 
@@ -241,6 +253,31 @@ function srcField(block) {
   return fieldRow("Source", input);
 }
 
+// An event block has no copy of its own to edit: Show picks which posts,
+// Limit how many, and the canvas label follows Show.
+function eventFields(block) {
+  const box = document.createElement("div");
+
+  box.append(selectField("Show", block.show,
+    [["Upcoming", "upcoming"], ["All", "all"]],
+    (value) => { block.show = value; drawPanes(); }));
+
+  const limit = document.createElement("input");
+  limit.type = "number";
+  limit.min = "1";
+  limit.max = "20";
+  limit.step = "1";
+  limit.value = String(block.limit ?? "");
+  limit.addEventListener("input", () => {
+    const value = Number(limit.value);
+    if (!Number.isFinite(value)) return;
+    block.limit = Math.min(20, Math.max(1, value));
+  });
+  box.append(fieldRow("Limit", limit));
+
+  return box;
+}
+
 function hrefField(block) {
   const input = document.createElement("input");
   input.type = "text";
@@ -273,6 +310,7 @@ deleteButton.addEventListener("click", () => {
 document.getElementById("add-text").addEventListener("click", () => addBlock("text"));
 document.getElementById("add-image").addEventListener("click", () => addBlock("image"));
 addMaskButton.addEventListener("click", () => addBlock("mask"));
+document.getElementById("add-event").addEventListener("click", () => addBlock("event"));
 
 function addBlock(type) {
   const river = currentRiver();
@@ -283,6 +321,13 @@ function addBlock(type) {
     block.y = 25;
     block.w = 50;
     block.h = 40;
+  }
+  if (type === "event") {
+    block.y = 40;
+    block.w = 84;
+    block.h = 30;
+    block.show = "upcoming";
+    block.limit = 5;
   }
   if (type === "image") block.src = "/scroll-poc/media/trail.jpg";
   river[layer].push(block);
