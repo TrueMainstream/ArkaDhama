@@ -1,0 +1,249 @@
+:root {
+  --ink: #f4efe6;
+  --muted: rgba(244, 239, 230, 0.74);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #090908;
+  color: var(--ink);
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+}
+
+body { overflow: hidden; }
+
+.stage {
+  display: flex;
+  height: 100dvh;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  background: #090908;
+}
+
+.channel {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100dvh;
+  overflow: hidden;
+  outline: none;
+}
+
+.waters {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* The portrait belongs to Events alone, and sits behind that river's own
+   colour. A window cut in the colour shows it. It can never show a neighbour. */
+.portrait {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-color: #6e4b32;
+  background-position: center 30%;
+  background-size: cover;
+  background-repeat: no-repeat;
+  pointer-events: none;
+  clip-path: inset(100%);
+}
+
+/* The standing figure is full length. Fit him whole, head included,
+   rather than cropping the top off to fill the window. */
+.portrait[data-window="portrait"] {
+  background-position: center top;
+  background-size: contain;
+  background-repeat: no-repeat;
+}
+
+/* The second photograph is fixed to the page: it covers the whole channel
+   and is clipped to the window each frame, so the photo itself never
+   scrolls even as the window moves. It shares the Events window with the
+   standing portrait, never a neighbouring river. */
+.portrait[data-window="india"] {
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+/* The Events window: an SVG mask on this river's colour alone. White keeps
+   the waters, black reveals the portrait behind them. Stage-pixel rect
+   coordinates come from main.js; the mask leaves with plain layout. */
+.mask-defs { position: absolute; width: 0; height: 0; }
+
+.stage.is-river .col-body .waters {
+  -webkit-mask: url(#events-mask);
+  mask: url(#events-mask);
+}
+
+.scroller {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  touch-action: pan-y;
+}
+
+.scroller::-webkit-scrollbar { display: none; }
+
+/* River mode: channels stack and are clipped to a shared shoreline. */
+.stage.is-river .channel {
+  position: absolute;
+  inset: 0;
+  flex: none;
+  height: auto;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.stage.is-river .scroller {
+  pointer-events: auto;
+  right: auto;
+}
+
+.col-head, .scene-copy, .col-end {
+  padding-inline: 0.85rem;
+  max-width: 100%;
+}
+
+.col-head, .scene {
+  min-height: 50dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding-bottom: 8vh;
+}
+
+.col-head .index, .eyebrow {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-size: 0.68rem;
+  opacity: 0.72;
+}
+
+.col-head h1 {
+  font-weight: 500;
+  font-size: clamp(3.4rem, 8vw, 7rem);
+  line-height: 0.88;
+  margin: 0.25rem 0 0.6rem;
+}
+
+.scene-copy h2 {
+  font-weight: 500;
+  font-size: clamp(1.35rem, 7cqi, 3.1rem);
+  line-height: 1.02;
+  margin: 0.4rem 0 0.7rem;
+  max-width: 16ch;
+}
+
+.scene-key h2 {
+  font-size: clamp(2.3rem, 5.2vw, 5.2rem);
+  max-width: 14ch;
+}
+
+/* A posted event is framed as a card, not read as river copy: a light border
+   and a faint wash set it apart while the river's colours stay untouched. */
+.event-card .scene-copy {
+  border: 1px solid rgba(244, 239, 230, 0.65);
+  background: rgba(244, 239, 230, 0.08);
+  padding: 1rem;
+  margin-bottom: 2rem;
+}
+
+/* The frame does the shouting; the title stays quiet. The link keeps the
+   page's ink, underlined only, so it reads as a link, not a new colour. */
+.event-card .scene-copy h2 {
+  font-size: 1.35rem;
+  max-width: none;
+}
+
+.event-card .scene-copy h2 a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.3em;
+}
+
+.col-head p, .scene-copy p {
+  max-width: 34rem;
+  font-size: 1.06rem;
+  line-height: 1.45;
+  color: var(--muted);
+  margin: 0;
+}
+
+.col-end {
+  min-height: 46dvh;
+  display: flex;
+  align-items: center;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  opacity: 0.65;
+}
+
+.waters { background: #1a1410; }
+[data-theme="mind"] .waters { background: #141820; }
+[data-theme="spirit"] .waters { background: #1a1012; }
+
+[data-plate="a"] .waters { background: linear-gradient(165deg, #6e4b32, #1c1410 68%); }
+[data-plate="b"] .waters { background: linear-gradient(180deg, #8a6240, #2a1c14); }
+[data-plate="c"] .waters { background: linear-gradient(200deg, #c4a574, #3a2a1c 55%, #140e0a); }
+[data-plate="d"] .waters { background: linear-gradient(165deg, #3d4c68, #141820 70%); }
+[data-plate="e"] .waters { background: linear-gradient(180deg, #6e7c93, #1a2030); }
+[data-plate="f"] .waters { background: linear-gradient(200deg, #d7d2c8, #2c3344 52%, #10131c); }
+[data-plate="g"] .waters { background: linear-gradient(160deg, #6d2430, #1a1012 70%); }
+[data-plate="h"] .waters { background: linear-gradient(180deg, #a84848, #2a1418); }
+[data-plate="i"] .waters { background: linear-gradient(200deg, #e7c2b0, #4a242c 54%, #140c0e); }
+
+.pager {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 6;
+  justify-content: space-around;
+  gap: 0.4rem;
+  padding: 0.7rem 0.8rem calc(0.7rem + env(safe-area-inset-bottom));
+  background: rgba(12, 11, 10, 0.88);
+  backdrop-filter: blur(8px);
+}
+
+.pager button {
+  flex: 1;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  padding: 0.7rem 0.2rem;
+  opacity: 0.45;
+}
+
+.pager button[aria-pressed="true"] { opacity: 1; }
+
+@media (max-width: 800px) and (orientation: portrait) {
+  .channel { display: none; flex: none; width: 100%; }
+  .channel.is-shown { display: block; }
+  .pager { display: flex; }
+  .col-head, .scene { padding-bottom: 22vh; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage.is-river .channel { position: relative; inset: auto; flex: 1 1 0; height: 100dvh; pointer-events: auto; }
+  .scroller { left: 0 !important; width: auto !important; right: 0 !important; }
+}
