@@ -7,7 +7,8 @@
 // the nine the document carries. The selected river is shown twice: its
 // top layer above, its still layer (the document's "bottom") below. The
 // tabs at the foot of the page choose which pane receives a new block;
-// both panes stay visible either way. Placement is by percentage fields;
+// both panes stay visible either way. A mask on the top layer is a hole
+// onto that same river's still layer. Placement is by percentage fields;
 // there is no drag this round.
 
 const RIVER_NAMES = [
@@ -66,6 +67,7 @@ function drawPanes() {
   paneStill.style.background = river.color;
   drawLayer(river.top, paneTop, true);
   drawLayer(river.bottom, paneStill, false);
+  drawMaskReveals(river);
 }
 
 function drawLayer(blocks, pane, isTop) {
@@ -78,6 +80,28 @@ function drawLayer(blocks, pane, isTop) {
   }
 }
 
+// Each mask on the selected river's top layer is a hole onto that river's
+// still layer: the still blocks are copied into a full-pane layer clipped
+// to the mask's rectangle. The copied blocks keep their own x, y, w, h, so
+// a still image shows through the hole where it sits and the rest of the
+// still layer does not. Only currentRiver().bottom is ever copied — a mask
+// never reads another river — and an empty still layer leaves the hole
+// showing the pane background and nothing else.
+function drawMaskReveals(river) {
+  for (const mask of river.top) {
+    if (mask.type !== "mask") continue;
+    const reveal = document.createElement("div");
+    reveal.className = "mask-reveal";
+    reveal.style.clipPath =
+      `inset(${mask.y}% ${100 - mask.x - mask.w}% ${100 - mask.y - mask.h}% ${mask.x}%)`;
+    for (const block of river.bottom) {
+      if (block.type === "mask") continue; // the validator rejects one here
+      reveal.append(blockElement(block));
+    }
+    paneTop.append(reveal);
+  }
+}
+
 function blockElement(block) {
   const el = document.createElement("div");
   el.className = `block is-${block.type}` + (block.id === selectedId ? " is-selected" : "");
@@ -85,11 +109,13 @@ function blockElement(block) {
   el.style.top = `${block.y}%`;
   el.style.width = `${block.w}%`;
   if (block.type === "text") {
-    // A text block keeps its own height; w places the measure.
+    // A text block takes its h as a floor, never a clip: min-height from
+    // h, height auto, so a paragraph grows instead of being cut.
     el.textContent = block.text;
     el.style.fontFamily = block.font || DEFAULT_FONT;
     el.style.fontSize = block.fontSize || DEFAULT_FONT_SIZE;
     el.style.color = block.fontColor || DEFAULT_FONT_COLOR;
+    el.style.minHeight = `${block.h}%`;
   } else {
     el.style.height = `${block.h}%`;
     if (block.type === "image") {
