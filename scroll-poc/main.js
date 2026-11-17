@@ -2,6 +2,59 @@
 // faster through the middle than at the top and bottom, until it is the stage.
 const stage = document.getElementById("stage");
 const channels = [...document.querySelectorAll(".channel")];
+
+// A presentation document, when the present lane has provided one, fills the
+// three scrollers before the Events window is located below. Text blocks in
+// river.top become scenes; image, mask, and bottom blocks wait for later
+// rounds. Without a document the rivers run empty and the loop is unchanged.
+const RIVER_SECTIONS = { events: "#events", training: "#training", books: "#products" };
+
+function renderDoc(doc) {
+  const rivers = (doc && doc.rivers) || {};
+  for (const [river, selector] of Object.entries(RIVER_SECTIONS)) {
+    const channel = document.querySelector(selector);
+    const scroller = channel && channel.querySelector(".scroller");
+    const top = rivers[river] && rivers[river].top;
+    if (!scroller || !Array.isArray(top)) continue;
+    let firstScene = true;
+    for (const block of top) {
+      if (!block || block.type !== "text" || typeof block.text !== "string") continue;
+      const article = document.createElement("article");
+      article.className = "scene";
+      if (block.id) article.id = block.id;
+      article.dataset.plate = channel.dataset.plate;
+      if (block.x != null) article.dataset.x = String(block.x);
+      if (block.y != null) article.dataset.y = String(block.y);
+      if (block.w != null) article.dataset.w = String(block.w);
+      if (block.h != null) article.dataset.h = String(block.h);
+      const copy = document.createElement("div");
+      copy.className = "scene-copy";
+      const eyebrow = document.createElement("span");
+      eyebrow.className = "eyebrow";
+      eyebrow.textContent = block.eyebrow || "";
+      const heading = document.createElement("h2");
+      heading.textContent = block.text;
+      copy.append(eyebrow, heading);
+      article.append(copy);
+      if (channel.id === "events" && firstScene) {
+        // The Events window keys off .scene-window, so the first scene
+        // rendered into that river carries it.
+        article.classList.add("scene-window");
+      }
+      firstScene = false;
+      scroller.append(article);
+    }
+  }
+}
+
+if (window.emptyDoc && window.seedDoc) renderDoc(window.seedDoc());
+
+const events = channels.findIndex((channel) => channel.querySelector(".scene-window"));
+const maskKeep = document.querySelector("#events-mask .mask-keep");
+const maskHole = document.querySelector("#events-mask .mask-hole");
+const eventsType = events >= 0
+  ? [...channels[events].querySelectorAll(".col-head, .scene-copy, .col-end")]
+  : [];
 const portrait = window.matchMedia("(max-width: 800px) and (orientation: portrait)");
 const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
 
@@ -9,6 +62,7 @@ const KNOTS = 9;
 const SUBS = 4;
 const shown = channels.map(() => 0);
 let knots = null;
+let anchorX = null;
 let hover = 0;
 let running = false;
 
@@ -110,6 +164,129 @@ function polygon(points) {
   return `polygon(${points.map(([x, y]) => `${x.toFixed(1)}px ${y.toFixed(1)}px`).join(",")})`;
 }
 
+function setRect(rect, x, y, w, h) {
+  rect.setAttribute("x", x.toFixed(1));
+  rect.setAttribute("y", y.toFixed(1));
+  rect.setAttribute("width", Math.max(0, w).toFixed(1));
+  rect.setAttribute("height", Math.max(0, h).toFixed(1));
+}
+
+// The Events river alone carries a window. Its channel keeps one polygon,
+// the shoreline; the hole is cut in that river's colour by an SVG mask
+// (white keeps the waters, black reveals the portrait behind them). The
+// hole belongs to the river, not to any one scene: it spans the part of
+// the river on screen, its left edge stays right of whatever type is being
+// read, and its right edge follows this river's own bank as the river
+// widens, so the portrait grows with the river until it takes the stage.
+function cutEventsWindow(banks, lead, t, width, height) {
+  if (events < 0 || !maskKeep || !maskHole) return;
+  const channel = channels[events];
+  const photo = channel.querySelector('.portrait[data-window="portrait"]');
+  const india = channel.querySelector('.portrait[data-window="india"]');
+  const box = stage.getBoundingClientRect();
+
+  setRect(maskKeep, 0, 0, width, height);
+
+  const y0 = height * 0.12;
+  const y1 = height * 0.94;
+  if (lead === events && t > 0.02) {
+    // The left edge never sits under type: it tracks the widest line of
+    // whatever copy is on screen in this river, eased so it slides.
+    let target = -Infinity;
+    for (const block of eventsType) {
+      const r = block.getBoundingClientRect();
+      if (r.bottom < box.top + y0 || r.top > box.top + y1) continue;
+      const range = document.createRange();
+      range.selectNodeContents(block);
+      for (const line of range.getClientRects()) {
+        target = Math.max(target, line.right - box.left);
+      }
+    }
+    if (target > -Infinity) {
+      target += 24;
+      anchorX = anchorX == null ? target : anchorX + (target - anchorX) * 0.2;
+    }
+  }
+
+  let points = "0,0";
+  let shot = null;
+  if (anchorX != null && anchorX < width - 64) {
+    // Right edge: this river's own bank at each row of the hole, so the
+    // photo is bounded by the shoreline. While the river is narrow there
+    // is no room and the hole has no size; as the river opens the hole
+    // grows across the right of the stage with the bank.
+    const rows = [];
+    let sLo = -1;
+    let sHi = -1;
+    let rightMax = 0;
+    banks.forEach((row, s) => {
+      const y = (s / (banks.length - 1)) * height;
+      if (y < y0 || y > y1) return;
+      const right = row[events + 1] - 8;
+      if (right - anchorX < 24) return;
+      if (sLo < 0) sLo = s;
+      sHi = s;
+      rightMax = Math.max(rightMax, right);
+      rows.push([Math.max(right, anchorX), y]);
+    });
+    if (sLo >= 0) {
+      const yLo = (sLo / (banks.length - 1)) * height;
+      const yHi = (sHi / (banks.length - 1)) * height;
+      const shape = [[anchorX, yLo], [anchorX, yHi]].concat(rows.slice().reverse());
+      points = shape.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+      shot = {
+        left: anchorX - 1,
+        top: yLo - 1,
+        width: rightMax - anchorX + 2,
+        height: yHi - yLo + 2,
+      };
+    }
+  }
+
+  maskHole.setAttribute("points", points);
+
+  // Further down the Events scroll the standing portrait gives way to a
+  // second photograph. It rides the same window and the same bounds, so it
+  // can never appear in a neighbouring river. It fades in over the standing
+  // portrait (photo onto photo, no scrim) and, unlike the content, it is
+  // fixed to the page: clipped in place each frame, never scrolled.
+  const along = progress(channel);
+  const shift = smooth(Math.min(1, Math.max(0, (along - 0.55) / 0.3)));
+
+  if (india) {
+    if (shot) {
+      const inset = [
+        shot.top,
+        width - (shot.left + shot.width),
+        height - (shot.top + shot.height),
+        shot.left,
+      ].map((v) => `${Math.max(0, v).toFixed(1)}px`).join(" ");
+      india.style.clipPath = `inset(${inset})`;
+      india.style.opacity = shift.toFixed(3);
+    } else {
+      india.style.clipPath = "";
+      india.style.opacity = "";
+    }
+  }
+
+  if (photo) {
+    if (shot) {
+      photo.style.clipPath = "none";
+      photo.style.left = `${shot.left.toFixed(1)}px`;
+      photo.style.top = `${shot.top.toFixed(1)}px`;
+      photo.style.width = `${shot.width.toFixed(1)}px`;
+      photo.style.height = `${shot.height.toFixed(1)}px`;
+    } else {
+      // No hole, no size: the portrait falls back to its hidden clip.
+      photo.style.clipPath = "";
+      photo.style.left = "";
+      photo.style.top = "";
+      photo.style.width = "";
+      photo.style.height = "";
+    }
+  }
+}
+
 function plateFor(channel) {
   const scroller = channel.querySelector(".scroller");
   const scenes = [...scroller.querySelectorAll(".scene")];
@@ -140,11 +317,21 @@ function showColumn(theme) {
 
 function plainLayout() {
   stage.classList.remove("is-river");
+  anchorX = null;
+  if (maskHole) maskHole.setAttribute("points", "0,0");
   for (const channel of channels) {
     channel.style.clipPath = "";
     channel.style.opacity = "";
     channel.style.filter = "";
     channel.style.zIndex = "";
+    for (const photo of channel.querySelectorAll(".portrait")) {
+      photo.style.clipPath = "";
+      photo.style.opacity = "";
+      photo.style.left = "";
+      photo.style.top = "";
+      photo.style.width = "";
+      photo.style.height = "";
+    }
     const scroller = channel.querySelector(".scroller");
     scroller.style.left = "";
     scroller.style.width = "";
@@ -200,8 +387,9 @@ function frame(time) {
         if (row[i + 1] < narrowR) narrowR = row[i + 1];
       }
     });
-    const shape = left.concat(right.reverse());
-    channel.style.clipPath = polygon(shape);
+    // The channel is clipped to its shoreline and to nothing else: exactly
+    // one polygon, set once the shoreline points are known.
+    channel.style.clipPath = polygon(left.concat(right.reverse()));
     const span = Math.max(0, narrowR - narrowL);
     const pad = Math.min(28, span * 0.06);
     const scroller = channel.querySelector(".scroller");
@@ -219,6 +407,8 @@ function frame(time) {
     const plate = plateFor(channel);
     if (plate && channel.dataset.plate !== plate) channel.dataset.plate = plate;
   });
+
+  cutEventsWindow(banks, lead, t, width, height);
 
   requestAnimationFrame(frame);
 }
@@ -240,9 +430,50 @@ function ensure() {
   }
 }
 
+// Anchors: each scene has a short id. On load, a hash naming an element
+// inside a river scrolls that river so the element sits near its top.
+// While a river is read, the hash follows the scene closest to the top
+// of that river, by replaceState only, so a bookmark keeps the place
+// without pushing a history entry per scene.
+function nearestScene(channel) {
+  const scroller = channel.querySelector(".scroller");
+  const box = scroller.getBoundingClientRect();
+  let best = null;
+  let bestDist = Infinity;
+  for (const scene of scroller.querySelectorAll(".scene")) {
+    const r = scene.getBoundingClientRect();
+    const dist = Math.abs(r.top - box.top);
+    if (dist < bestDist) {
+      best = scene;
+      bestDist = dist;
+    }
+  }
+  return best;
+}
+
+function trackPlace(channel) {
+  const scene = nearestScene(channel);
+  if (!scene || !scene.id) return;
+  const want = "#" + scene.id;
+  if (location.hash !== want) history.replaceState(null, "", want);
+}
+
+function applyHash() {
+  const id = decodeURIComponent(location.hash.slice(1));
+  if (!id) return;
+  const el = document.getElementById(id);
+  if (!el) return;
+  const scroller = el.closest(".scroller");
+  if (!scroller) return;
+  const sBox = scroller.getBoundingClientRect();
+  const eBox = el.getBoundingClientRect();
+  scroller.scrollTop += eBox.top - sBox.top - 8;
+}
+
 for (const channel of channels) {
   channel.querySelector(".scroller").addEventListener("scroll", () => {
     hover = channels.indexOf(channel);
+    trackPlace(channel);
   }, { passive: true });
   channel.addEventListener("pointerenter", () => {
     hover = channels.indexOf(channel);
@@ -263,4 +494,5 @@ document.getElementById("pager").addEventListener("click", (event) => {
 
 portrait.addEventListener("change", ensure);
 reduce.addEventListener("change", ensure);
+applyHash();
 ensure();

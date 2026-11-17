@@ -5,144 +5,77 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Srinivas Arka</title>
 <link rel="stylesheet" href="styles.css">
+<style>
+  /* The classic site stays reachable above the rivers: one light bar,
+     desktop-first. It is not a phone layout. */
+  .site-nav {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 10px 26px;
+    padding: 13px 28px;
+    background: #efe8da;
+    border-bottom: 1px solid rgba(74, 53, 36, 0.25);
+    font-size: 14px;
+    letter-spacing: 0.02em;
+  }
+  .site-nav a {
+    color: #4a3524;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .site-nav a:hover {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+</style>
 </head>
 <body>
+<nav class="site-nav" aria-label="The classic Srinivas Arka site">
+  <a href="https://www.srinivasarka.org/">Home</a>
+  <a href="https://www.srinivasarka.org/about">About</a>
+  <a href="https://www.srinivasarka.org/events-news">Events &amp; News</a>
+  <a href="https://www.srinivasarka.org/methods-training">Methods &amp; Training</a>
+  <a href="https://www.srinivasarka.org/communities">Communities</a>
+  <a href="https://www.srinivasarka.org/arka-dhama">Arka Dhama</a>
+  <a href="https://www.srinivasarka.org/videos">Videos</a>
+  <a href="https://www.srinivasarka.org/books">Books</a>
+  <a href="https://www.srinivasarka.org/contact">Contact</a>
+</nav>
 <div class="stage" id="stage">
-  <section class="channel" id="col-body" data-theme="body" data-plate="a" tabindex="0" aria-label="Body">
+  <section class="channel col-body" id="events" data-theme="body" data-plate="a" tabindex="0" aria-label="Events">
+    <div class="portrait" data-window="portrait" style="background-image:url(media/arka-standing.png)"></div>
+    <div class="portrait" data-window="india" style="background-image:url(media/india.jpg)"></div>
     <div class="waters"></div>
-    <div class="scroller">
-      <header class="col-head">
-        <span class="index">01</span>
-        <h1>Events</h1>
-        <p>Talks, retreats, and gatherings with Srinivas Arka.</p>
-      </header>
-
-      <article class="scene" data-plate="a">
-        <div class="scene-copy">
-          <span class="eyebrow">Now</span>
-          <h2>Srinivas Arka is in India.</h2>
-          <p>Welcome to Yogi Srinivas Arka at Arka Dhama, Mysuru. From here the journey continues to New Zealand, Australia, and Fiji.</p>
-        </div>
-      </article>
-
-      <article class="scene" data-plate="b">
-        <div class="scene-copy">
-          <span class="eyebrow">Canada</span>
-          <h2>CCA Canada, sixteen years.</h2>
-          <p>The Centre for Conscious Awareness in Canada marked its sixteenth anniversary in Vaughan on 9 August 2026.</p>
-        </div>
-      </article>
-
-      <article class="scene" data-plate="c">
-        <div class="scene-copy">
-          <span class="eyebrow">Communities</span>
-          <h2>Seven countries, one practice.</h2>
-          <p>Centres for Conscious Awareness in the United Kingdom, United States, Canada, New Zealand, Australia, Spain, and India.</p>
-        </div>
-      </article>
-
-      <article class="scene scene-key" data-plate="a">
-        <div class="scene-copy">
-          <span class="eyebrow">Arka Dhama</span>
-          <h2>Ten acres outside Mysuru.</h2>
-          <p>A sanctuary kept for more than forty years. Meditation at sunrise, organic farming, Ayurveda, and the Shree Arka Mahaganapathy Spiritual Centre.</p>
-        </div>
-      </article>
-
-      <footer class="col-end">Contact. Write about a gathering, or join the list for what comes next.</footer>
-    </div>
+    <div class="scroller"></div>
   </section>
 
-  <section class="channel" id="col-mind" data-theme="mind" data-plate="d" tabindex="0" aria-label="Mind">
+  <section class="channel col-mind" id="training" data-theme="mind" data-plate="d" tabindex="0" aria-label="Mind">
     <div class="waters"></div>
-    <div class="scroller">
-      <header class="col-head">
-        <span class="index">02</span>
-        <h1>Training</h1>
-        <p>Arka Dhyana, the Intuitive Intelligence Programme, and the Arka School of Yoga.</p>
-      </header>
-
-      <article class="scene" data-plate="d">
-        <div class="scene-copy">
-          <span class="eyebrow">Arka Dhyana</span>
-          <h2>Breath, sound, and touch.</h2>
-          <p>Intuition awakens when intelligence is exhausted. The method lets the heart supersede the mind.</p>
-        </div>
-      </article>
-
-      <article class="scene" data-plate="e">
-        <div class="scene-copy">
-          <span class="eyebrow">Five petals</span>
-          <h2>Health, wealth, communication, love, self-awareness.</h2>
-          <p>The Intuitive Intelligence Programme treats spiritual development and ordinary life as one practice.</p>
-        </div>
-      </article>
-
-      <article class="scene" data-plate="f">
-        <div class="scene-copy">
-          <span class="eyebrow">Arka School of Yoga</span>
-          <h2>The body keeps the balance.</h2>
-          <p>Traditional Yoga training alongside the meditation, so the practice has somewhere to live.</p>
-        </div>
-      </article>
-
-      <article class="scene scene-key" data-plate="d">
-        <div class="scene-copy">
-          <span class="eyebrow">Arka Dhama</span>
-          <h2>Where the method is kept.</h2>
-          <p>Daily practice, study, and the land itself are part of the training.</p>
-        </div>
-      </article>
-
-      <footer class="col-end">Contact. Ask about a course, a workshop, or certification.</footer>
-    </div>
+    <div class="scroller"></div>
   </section>
 
-  <section class="channel" id="col-spirit" data-theme="spirit" data-plate="g" tabindex="0" aria-label="Spirit">
+  <section class="channel col-spirit" id="products" data-theme="spirit" data-plate="g" tabindex="0" aria-label="Spirit">
     <div class="waters"></div>
-    <div class="scroller">
-      <header class="col-head">
-        <span class="index">03</span>
-        <h1>Products</h1>
-        <p>Books and talks. Coppersun Books has carried the writing since 2003.</p>
-      </header>
-
-      <article class="scene" data-plate="g">
-        <div class="scene-copy">
-          <span class="eyebrow">Books</span>
-          <h2>Arka Dhyana Intuitive Meditation.</h2>
-          <p>The method, developed over twenty-five years. Becoming Inspired, Petals of the Heart, and Bright Moon sit beside it.</p>
-        </div>
-      </article>
-
-      <article class="scene" data-plate="h">
-        <div class="scene-copy">
-          <span class="eyebrow">Videos</span>
-          <h2>A retreat in England.</h2>
-          <p>The 2025 Arka Dhyana retreat, and a ninety-day journey through the United Kingdom, Canada, Mexico, Spain, and Scotland.</p>
-        </div>
-      </article>
-
-      <article class="scene" data-plate="i">
-        <div class="scene-copy">
-          <span class="eyebrow">About</span>
-          <h2>Third generation of a family of yogis.</h2>
-          <p>Born in India, a master's in English literature, seven languages, and more than thirty years of teaching on four continents.</p>
-        </div>
-      </article>
-
-      <article class="scene scene-key" data-plate="g">
-        <div class="scene-copy">
-          <span class="eyebrow">The work</span>
-          <h2>Wisdom has to be reachable.</h2>
-          <p>Books in several languages, audio, and the talks, so the teaching is not limited to the room it was given in.</p>
-        </div>
-      </article>
-
-      <footer class="col-end">Contact. Write about a book, a programme, or the centre near you.</footer>
-    </div>
+    <div class="scroller"></div>
   </section>
 </div>
+
+<!-- The Events window. White keeps that river's colour, black lets the
+     portrait behind it show. Coordinates are stage pixels, set from main.js;
+     the channel itself keeps its single shoreline polygon as its clip, and
+     the hole's own points follow the shoreline as the river opens.
+     The mask region is explicit: a percentage region with userSpaceOnUse
+     resolves to nothing against an HTML element, which would empty the
+     whole mask and hide the river's colour. -->
+<svg class="mask-defs" aria-hidden="true" focusable="false">
+  <defs>
+    <mask id="events-mask" maskUnits="userSpaceOnUse" x="-1000" y="-1000" width="6000" height="6000">
+      <rect class="mask-keep" x="0" y="0" width="10000" height="10000" fill="#fff"/>
+      <polygon class="mask-hole" points="0,0" fill="#000"/>
+    </mask>
+  </defs>
+</svg>
 
 <nav class="pager" id="pager" aria-label="Choose a column">
   <button type="button" data-go="body" aria-pressed="true">Events</button>
@@ -150,6 +83,9 @@
   <button type="button" data-go="spirit">Products</button>
 </nav>
 
+<!-- The presentation document. The present lane provides it; until that
+     merge this script 404s and the rivers simply run empty. -->
+<script src="../present/doc.js"></script>
 <script src="main.js"></script>
 </body>
 </html>
