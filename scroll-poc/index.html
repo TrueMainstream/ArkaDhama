@@ -8,7 +8,9 @@
 </head>
 <body>
 <div class="stage" id="stage">
-  <section class="channel" id="col-body" data-theme="body" data-plate="a" tabindex="0" aria-label="Body">
+  <section class="channel col-body" id="events" data-theme="body" data-plate="a" tabindex="0" aria-label="Events">
+    <div class="portrait" data-window="portrait" style="background-image:url(media/arka-standing.png)"></div>
+    <div class="portrait" data-window="india" style="background-image:url(media/india.jpg)"></div>
     <div class="waters"></div>
     <div class="scroller">
       <header class="col-head">
@@ -17,7 +19,7 @@
         <p>Talks, retreats, and gatherings with Srinivas Arka.</p>
       </header>
 
-      <article class="scene" data-plate="a">
+      <article class="scene scene-window" id="india" data-window="portrait" data-plate="a">
         <div class="scene-copy">
           <span class="eyebrow">Now</span>
           <h2>Srinivas Arka is in India.</h2>
@@ -25,7 +27,7 @@
         </div>
       </article>
 
-      <article class="scene" data-plate="b">
+      <article class="scene" id="canada" data-plate="b">
         <div class="scene-copy">
           <span class="eyebrow">Canada</span>
           <h2>CCA Canada, sixteen years.</h2>
@@ -33,7 +35,7 @@
         </div>
       </article>
 
-      <article class="scene" data-plate="c">
+      <article class="scene" id="communities" data-plate="c">
         <div class="scene-copy">
           <span class="eyebrow">Communities</span>
           <h2>Seven countries, one practice.</h2>
@@ -41,7 +43,7 @@
         </div>
       </article>
 
-      <article class="scene scene-key" data-plate="a">
+      <article class="scene scene-key" id="dhama" data-plate="a">
         <div class="scene-copy">
           <span class="eyebrow">Arka Dhama</span>
           <h2>Ten acres outside Mysuru.</h2>
@@ -53,7 +55,7 @@
     </div>
   </section>
 
-  <section class="channel" id="col-mind" data-theme="mind" data-plate="d" tabindex="0" aria-label="Mind">
+  <section class="channel col-mind" id="training" data-theme="mind" data-plate="d" tabindex="0" aria-label="Mind">
     <div class="waters"></div>
     <div class="scroller">
       <header class="col-head">
@@ -62,7 +64,7 @@
         <p>Arka Dhyana, the Intuitive Intelligence Programme, and the Arka School of Yoga.</p>
       </header>
 
-      <article class="scene" data-plate="d">
+      <article class="scene" id="dhyana" data-plate="d">
         <div class="scene-copy">
           <span class="eyebrow">Arka Dhyana</span>
           <h2>Breath, sound, and touch.</h2>
@@ -70,7 +72,7 @@
         </div>
       </article>
 
-      <article class="scene" data-plate="e">
+      <article class="scene" id="petals" data-plate="e">
         <div class="scene-copy">
           <span class="eyebrow">Five petals</span>
           <h2>Health, wealth, communication, love, self-awareness.</h2>
@@ -78,7 +80,7 @@
         </div>
       </article>
 
-      <article class="scene" data-plate="f">
+      <article class="scene" id="yoga" data-plate="f">
         <div class="scene-copy">
           <span class="eyebrow">Arka School of Yoga</span>
           <h2>The body keeps the balance.</h2>
@@ -86,7 +88,7 @@
         </div>
       </article>
 
-      <article class="scene scene-key" data-plate="d">
+      <article class="scene scene-key" id="training-dhama" data-plate="d">
         <div class="scene-copy">
           <span class="eyebrow">Arka Dhama</span>
           <h2>Where the method is kept.</h2>
@@ -98,7 +100,7 @@
     </div>
   </section>
 
-  <section class="channel" id="col-spirit" data-theme="spirit" data-plate="g" tabindex="0" aria-label="Spirit">
+  <section class="channel col-spirit" id="products" data-theme="spirit" data-plate="g" tabindex="0" aria-label="Spirit">
     <div class="waters"></div>
     <div class="scroller">
       <header class="col-head">
@@ -107,7 +109,7 @@
         <p>Books and talks. Coppersun Books has carried the writing since 2003.</p>
       </header>
 
-      <article class="scene" data-plate="g">
+      <article class="scene" id="books" data-plate="g">
         <div class="scene-copy">
           <span class="eyebrow">Books</span>
           <h2>Arka Dhyana Intuitive Meditation.</h2>
@@ -115,7 +117,7 @@
         </div>
       </article>
 
-      <article class="scene" data-plate="h">
+      <article class="scene" id="videos" data-plate="h">
         <div class="scene-copy">
           <span class="eyebrow">Videos</span>
           <h2>A retreat in England.</h2>
@@ -123,7 +125,7 @@
         </div>
       </article>
 
-      <article class="scene" data-plate="i">
+      <article class="scene" id="about" data-plate="i">
         <div class="scene-copy">
           <span class="eyebrow">About</span>
           <h2>Third generation of a family of yogis.</h2>
@@ -131,7 +133,7 @@
         </div>
       </article>
 
-      <article class="scene scene-key" data-plate="g">
+      <article class="scene scene-key" id="reach" data-plate="g">
         <div class="scene-copy">
           <span class="eyebrow">The work</span>
           <h2>Wisdom has to be reachable.</h2>
@@ -143,6 +145,22 @@
     </div>
   </section>
 </div>
+
+<!-- The Events window. White keeps that river's colour, black lets the
+     portrait behind it show. Coordinates are stage pixels, set from main.js;
+     the channel itself keeps its single shoreline polygon as its clip, and
+     the hole's own points follow the shoreline as the river opens.
+     The mask region is explicit: a percentage region with userSpaceOnUse
+     resolves to nothing against an HTML element, which would empty the
+     whole mask and hide the river's colour. -->
+<svg class="mask-defs" aria-hidden="true" focusable="false">
+  <defs>
+    <mask id="events-mask" maskUnits="userSpaceOnUse" x="-1000" y="-1000" width="6000" height="6000">
+      <rect class="mask-keep" x="0" y="0" width="10000" height="10000" fill="#fff"/>
+      <polygon class="mask-hole" points="0,0" fill="#000"/>
+    </mask>
+  </defs>
+</svg>
 
 <nav class="pager" id="pager" aria-label="Choose a column">
   <button type="button" data-go="body" aria-pressed="true">Events</button>
