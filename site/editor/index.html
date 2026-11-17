@@ -4,16 +4,21 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Arka Dhama — river editor</title>
-<link rel="stylesheet" href="editor.css">
+<link rel="stylesheet" href="/editor/editor.css">
 </head>
 <body>
 <header class="bar">
   <span class="mark">Arka Dhama</span>
   <nav class="rivers" id="rivers" aria-label="Choose a river"></nav>
-  <p class="doc-actions">
-    <button type="button" id="save" disabled title="Not connected yet.">Save</button>
-    <button type="button" id="revert" disabled title="Not connected yet.">Revert</button>
-  </p>
+  <div class="doc-area">
+    <p class="doc-actions">
+      <button type="button" id="save">Save</button>
+      <button type="button" id="revert">Revert</button>
+      <button type="button" id="history">History</button>
+      <span id="status" aria-live="polite"></span>
+    </p>
+    <div id="history-list" hidden></div>
+  </div>
 </header>
 
 <main class="work">
@@ -61,10 +66,10 @@
 </footer>
 
 <!-- Both scripts are modules so they run in this order after the page is
-     parsed: doc.js attaches the seed, editor.js copies it. If the document
-     never arrives, editor.js stops the page on the words "Document
-     unavailable." -->
+     parsed. editor.js first asks the worker for the live document; doc.js
+     is the seed it copies when nothing has been saved. If neither arrives,
+     editor.js stops the page on the words "Document unavailable." -->
 <script type="module" src="/present/doc.js"></script>
-<script type="module" src="editor.js"></script>
+<script type="module" src="/editor/editor.js"></script>
 </body>
 </html>
