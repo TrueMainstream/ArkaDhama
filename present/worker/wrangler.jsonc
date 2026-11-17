@@ -1,0 +1,19 @@
+{
+  "name": "arka-present",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-17",
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "PRESENTS",
+        "class_name": "PresentStore"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["PresentStore"]
+    }
+  ]
+}
