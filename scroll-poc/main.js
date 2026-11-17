@@ -2,6 +2,53 @@
 // faster through the middle than at the top and bottom, until it is the stage.
 const stage = document.getElementById("stage");
 const channels = [...document.querySelectorAll(".channel")];
+
+// A presentation document, when the present lane has provided one, fills the
+// three scrollers before the Events window is located below. Text blocks in
+// river.top become scenes; image, mask, and bottom blocks wait for later
+// rounds. Without a document the rivers run empty and the loop is unchanged.
+const RIVER_SECTIONS = { events: "#events", training: "#training", books: "#products" };
+
+function renderDoc(doc) {
+  const rivers = (doc && doc.rivers) || {};
+  for (const [river, selector] of Object.entries(RIVER_SECTIONS)) {
+    const channel = document.querySelector(selector);
+    const scroller = channel && channel.querySelector(".scroller");
+    const top = rivers[river] && rivers[river].top;
+    if (!scroller || !Array.isArray(top)) continue;
+    let firstScene = true;
+    for (const block of top) {
+      if (!block || block.type !== "text" || typeof block.text !== "string") continue;
+      const article = document.createElement("article");
+      article.className = "scene";
+      if (block.id) article.id = block.id;
+      article.dataset.plate = channel.dataset.plate;
+      if (block.x != null) article.dataset.x = String(block.x);
+      if (block.y != null) article.dataset.y = String(block.y);
+      if (block.w != null) article.dataset.w = String(block.w);
+      if (block.h != null) article.dataset.h = String(block.h);
+      const copy = document.createElement("div");
+      copy.className = "scene-copy";
+      const eyebrow = document.createElement("span");
+      eyebrow.className = "eyebrow";
+      eyebrow.textContent = block.eyebrow || "";
+      const heading = document.createElement("h2");
+      heading.textContent = block.text;
+      copy.append(eyebrow, heading);
+      article.append(copy);
+      if (channel.id === "events" && firstScene) {
+        // The Events window keys off .scene-window, so the first scene
+        // rendered into that river carries it.
+        article.classList.add("scene-window");
+      }
+      firstScene = false;
+      scroller.append(article);
+    }
+  }
+}
+
+if (window.emptyDoc && window.seedDoc) renderDoc(window.seedDoc());
+
 const events = channels.findIndex((channel) => channel.querySelector(".scene-window"));
 const maskKeep = document.querySelector("#events-mask .mask-keep");
 const maskHole = document.querySelector("#events-mask .mask-hole");
