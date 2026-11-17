@@ -2,6 +2,15 @@
 // faster through the middle than at the top and bottom, until it is the stage.
 const stage = document.getElementById("stage");
 const channels = [...document.querySelectorAll(".channel")];
+
+// The presentation document, when its lane is present, fills the empty
+// scrollers before anything below looks for scenes: the Events window finds
+// the .scene-window it cuts around only because the seed rendered one. With
+// no document the rivers simply run empty.
+if (window.emptyDoc && window.seedDoc) {
+  renderDoc(window.seedDoc());
+}
+
 const events = channels.findIndex((channel) => channel.querySelector(".scene-window"));
 const maskKeep = document.querySelector("#events-mask .mask-keep");
 const maskHole = document.querySelector("#events-mask .mask-hole");
@@ -10,6 +19,51 @@ const eventsType = events >= 0
   : [];
 const portrait = window.matchMedia("(max-width: 800px) and (orientation: portrait)");
 const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+// One presentation document holds nine rivers; this round draws three of
+// them — events, training, books — into the three scrollers, one article per
+// text block on the top layer. Images, masks, and the bottom layer are later
+// rounds, so everything else is skipped. Each scene carries the channel's
+// current plate, and the block's percentages ride along as data-x/y/w/h for
+// the editor round; the frame loop still does the stacking.
+function renderDoc(doc) {
+  const rivers = Array.isArray(doc && doc.rivers) ? doc.rivers : [];
+  const drawn = [
+    ["events", "events"],
+    ["training", "training"],
+    ["books", "products"],
+  ];
+  for (const [riverId, sectionId] of drawn) {
+    const section = document.getElementById(sectionId);
+    const scroller = section && section.querySelector(".scroller");
+    const river = rivers.find((entry) => entry && entry.id === riverId);
+    if (!scroller || !river || !Array.isArray(river.top)) continue;
+    let first = true;
+    for (const block of river.top) {
+      if (!block || block.type !== "text") continue;
+      const article = document.createElement("article");
+      article.className = "scene";
+      if (sectionId === "events" && first) article.classList.add("scene-window");
+      article.id = block.id;
+      article.dataset.plate = section.dataset.plate;
+      article.dataset.x = block.x;
+      article.dataset.y = block.y;
+      article.dataset.w = block.w;
+      article.dataset.h = block.h;
+      const copy = document.createElement("div");
+      copy.className = "scene-copy";
+      const eyebrow = document.createElement("span");
+      eyebrow.className = "eyebrow";
+      eyebrow.textContent = typeof block.eyebrow === "string" ? block.eyebrow : "";
+      const heading = document.createElement("h2");
+      heading.textContent = block.text;
+      copy.append(eyebrow, heading);
+      article.append(copy);
+      scroller.append(article);
+      first = false;
+    }
+  }
+}
 
 const KNOTS = 9;
 const SUBS = 4;
