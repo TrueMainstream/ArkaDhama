@@ -1,0 +1,31 @@
+{
+  "name": "arka-events-store",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-17",
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "EVENTS",
+        "class_name": "EventStore"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["EventStore"]
+    }
+  ],
+  "rules": [
+    {
+      "type": "Text",
+      "globs": ["**/*.html"],
+      "fallthrough": true
+    },
+    {
+      "type": "Text",
+      "globs": ["events.js", "**/events.js"],
+      "fallthrough": true
+    }
+  ]
+}
