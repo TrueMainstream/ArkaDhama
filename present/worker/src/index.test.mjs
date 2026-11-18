@@ -1,6 +1,7 @@
 // Run with: node --test present/worker/src/index.test.mjs
 // present/history.js stays the spec for the revision rules; these tests
-// check the worker's copy of them against a real SQLite database.
+// check the worker's copy of them against a real SQLite database, plus the
+// draft/published split: PUT edits the draft, publish copies it to live.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -109,7 +110,7 @@ test('POST /api/revert copies the newest strictly earlier revision forward', asy
     ['seed-3', '2020-01-01T00:00:03.000Z', { step: 3 }],
   ]);
   db.prepare(
-    `INSERT INTO docs (id, body, saved_at) VALUES ('live', ?, ?)
+    `INSERT INTO docs (id, body, saved_at) VALUES ('draft', ?, ?)
      ON CONFLICT (id) DO UPDATE SET body = excluded.body, saved_at = excluded.saved_at`
   ).run(JSON.stringify({ step: 3 }), '2020-01-01T00:00:03.000Z');
 
@@ -140,7 +141,7 @@ test('POST /api/restore copies the revision at `at` forward, or 404', async () =
     ['seed-2', '2020-01-01T00:00:02.000Z', { step: 2 }],
   ]);
   db.prepare(
-    `INSERT INTO docs (id, body, saved_at) VALUES ('live', ?, ?)
+    `INSERT INTO docs (id, body, saved_at) VALUES ('draft', ?, ?)
      ON CONFLICT (id) DO UPDATE SET body = excluded.body, saved_at = excluded.saved_at`
   ).run(JSON.stringify({ step: 2 }), '2020-01-01T00:00:02.000Z');
 
@@ -165,4 +166,49 @@ test('POST /api/restore copies the revision at `at` forward, or 404', async () =
   assert.equal(revisions.length, 3); // the restore filed one more row
   assert.deepEqual(revisions[2].body, { step: 1 });
   assert.equal(revisions[2].savedAt, json.saved_at);
+});
+
+test('GET /api/published stays 404 until POST /api/publish copies the draft', async () => {
+  const { store } = makeStore();
+
+  const before = await store.fetch(request('GET', '/api/published'));
+  assert.equal(before.status, 404);
+
+  await store.fetch(request('PUT', '/api/doc', { river: 'body' }));
+  const unpublished = await store.fetch(request('GET', '/api/published'));
+  assert.equal(unpublished.status, 404); // a PUT alone never publishes
+
+  const publish = await store.fetch(request('POST', '/api/publish'));
+  assert.equal(publish.status, 200);
+  const json = await publish.json();
+  assert.deepEqual(json.body, { river: 'body' });
+
+  const published = await store.fetch(request('GET', '/api/published'));
+  assert.equal(published.status, 200);
+  assert.deepEqual(await published.json(), { river: 'body' });
+
+  const revisions = await (
+    await store.fetch(request('GET', '/api/history'))
+  ).json();
+  assert.equal(revisions.length, 2); // the save, then the published copy
+  assert.deepEqual(revisions[1].body, { river: 'body' });
+  assert.equal(revisions[1].savedAt, json.saved_at);
+});
+
+test('a second PUT leaves the published row alone until the next publish', async () => {
+  const { store } = makeStore();
+
+  await store.fetch(request('PUT', '/api/doc', { step: 1 }));
+  await store.fetch(request('POST', '/api/publish'));
+
+  await store.fetch(request('PUT', '/api/doc', { step: 2 }));
+  const published = await store.fetch(request('GET', '/api/published'));
+  assert.deepEqual(await published.json(), { step: 1 }); // still the old body
+
+  const doc = await store.fetch(request('GET', '/api/doc'));
+  assert.deepEqual(await doc.json(), { step: 2 }); // the draft did move
+
+  await store.fetch(request('POST', '/api/publish'));
+  const republished = await store.fetch(request('GET', '/api/published'));
+  assert.deepEqual(await republished.json(), { step: 2 });
 });

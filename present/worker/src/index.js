@@ -1,5 +1,6 @@
-// arka-present: stores and serves one live document, files every save as a
-// revision, and can revert or restore. No editor UI, no HTML.
+// arka-present: keeps a draft and a published document, files every save
+// and every publish as a revision, and can revert or restore the draft.
+// No editor UI, no HTML.
 
 export default {
   async fetch(request, env) {
@@ -11,6 +12,8 @@ export default {
 
     if (
       url.pathname === '/api/doc' ||
+      url.pathname === '/api/published' ||
+      url.pathname === '/api/publish' ||
       url.pathname === '/api/history' ||
       url.pathname === '/api/revert' ||
       url.pathname === '/api/restore'
@@ -55,6 +58,14 @@ export class PresentStore {
       return this.putDoc(request);
     }
 
+    if (url.pathname === '/api/published' && request.method === 'GET') {
+      return this.getPublished();
+    }
+
+    if (url.pathname === '/api/publish' && request.method === 'POST') {
+      return this.publishDoc();
+    }
+
     if (url.pathname === '/api/history' && request.method === 'GET') {
       return this.getHistory();
     }
@@ -72,29 +83,50 @@ export class PresentStore {
 
   // The revision rules below are the ones in present/history.js. That module
   // stays the spec, but the worker cannot load a file outside its directory,
-  // so the rules are repeated here:
-  // 1. PUT /api/doc, after it stores the live row, also inserts one
+  // so the rules are repeated here. On top of them the store keeps two rows
+  // in docs: the 'draft' row is the only one PUT, revert and restore ever
+  // touch; the 'live' row is the published document and changes only by
+  // publishing.
+  // 1. PUT /api/doc, after it stores the draft row, also inserts one
   //    revisions row: the id is a random UUID, saved_at is the same timestamp
-  //    as the live row, body is the stored JSON text. Older revisions are
-  //    never deleted.
+  //    as the draft row, body is the stored JSON text. Older revisions are
+  //    never deleted. The live row is untouched.
   // 2. GET /api/history returns the revisions oldest first, as
   //    [{ id, savedAt, body }], with body parsed from the stored text.
-  // 3. POST /api/revert reads the live saved_at, finds the newest revision
-  //    whose saved_at is strictly earlier, copies that body into the live row
-  //    under a new saved_at, and inserts that copy as a new revision. 409
-  //    when there is no earlier revision.
+  // 3. POST /api/revert reads the draft saved_at, finds the newest revision
+  //    whose saved_at is strictly earlier, copies that body into the draft
+  //    row under a new saved_at, and inserts that copy as a new revision.
+  //    409 when there is no earlier revision.
   // 4. POST /api/restore reads { at } from its JSON body, finds the revision
-  //    with that saved_at, and copies it forward the same way. 404 when at
-  //    does not exist.
+  //    with that saved_at, and copies it forward into the draft row the same
+  //    way. 404 when at does not exist.
+  // 5. POST /api/publish reads the draft row, copies its body onto the live
+  //    row under a new saved_at, and inserts that published copy as one more
+  //    revision. The public document changes only here. 404 when there is no
+  //    draft to publish.
 
   async getDoc() {
+    const result = await this.ctx.storage.sql.exec(
+      `SELECT body FROM docs WHERE id = ?`,
+      'draft'
+    );
+    const rows = result.toArray();
+    if (rows.length === 0) {
+      return Response.json({ error: 'no draft document' }, { status: 404 });
+    }
+    return new Response(rows[0].body, {
+      headers: { 'content-type': 'application/json' },
+    });
+  }
+
+  async getPublished() {
     const result = await this.ctx.storage.sql.exec(
       `SELECT body FROM docs WHERE id = ?`,
       'live'
     );
     const rows = result.toArray();
     if (rows.length === 0) {
-      return Response.json({ error: 'no live document' }, { status: 404 });
+      return Response.json({ error: 'nothing published' }, { status: 404 });
     }
     return new Response(rows[0].body, {
       headers: { 'content-type': 'application/json' },
@@ -117,13 +149,37 @@ export class PresentStore {
     await this.ctx.storage.sql.exec(
       `INSERT INTO docs (id, body, saved_at) VALUES (?, ?, ?)
        ON CONFLICT (id) DO UPDATE SET body = excluded.body, saved_at = excluded.saved_at`,
-      'live',
+      'draft',
       text,
       savedAt
     );
     await this.insertRevision(text, savedAt);
 
     return Response.json({ body, saved_at: savedAt });
+  }
+
+  // Rules: present/history.js, rule 5 in the block above.
+  async publishDoc() {
+    const draft = await this.ctx.storage.sql.exec(
+      `SELECT body FROM docs WHERE id = ?`,
+      'draft'
+    );
+    const rows = draft.toArray();
+    if (rows.length === 0) {
+      return Response.json({ error: 'no draft to publish' }, { status: 404 });
+    }
+
+    const savedAt = new Date().toISOString();
+    await this.ctx.storage.sql.exec(
+      `INSERT INTO docs (id, body, saved_at) VALUES (?, ?, ?)
+       ON CONFLICT (id) DO UPDATE SET body = excluded.body, saved_at = excluded.saved_at`,
+      'live',
+      rows[0].body,
+      savedAt
+    );
+    await this.insertRevision(rows[0].body, savedAt);
+
+    return Response.json({ body: JSON.parse(rows[0].body), saved_at: savedAt });
   }
 
   // Rules: present/history.js, rule 2 in the block above.
@@ -143,25 +199,25 @@ export class PresentStore {
 
   // Rules: present/history.js, rule 3 in the block above.
   async revertDoc() {
-    const live = await this.ctx.storage.sql.exec(
+    const draft = await this.ctx.storage.sql.exec(
       `SELECT saved_at FROM docs WHERE id = ?`,
-      'live'
+      'draft'
     );
-    const liveRows = live.toArray();
+    const draftRows = draft.toArray();
 
     let previous = [];
-    if (liveRows.length > 0) {
+    if (draftRows.length > 0) {
       const result = await this.ctx.storage.sql.exec(
         `SELECT body FROM revisions WHERE saved_at < ?
          ORDER BY saved_at DESC, rowid DESC LIMIT 1`,
-        liveRows[0].saved_at
+        draftRows[0].saved_at
       );
       previous = result.toArray();
     }
 
     if (previous.length === 0) {
       return Response.json(
-        { error: 'no revision before the live one to revert to' },
+        { error: 'no revision before the draft one to revert to' },
         { status: 409 }
       );
     }
@@ -206,13 +262,14 @@ export class PresentStore {
   }
 
   // Rules: present/history.js, rules 3 and 4 in the block above. A revert or
-  // restore never rewrites history: the older body is copied into the live
-  // row under a new saved_at and filed as one more revision.
+  // restore never rewrites history and never publishes: the older body is
+  // copied into the draft row under a new saved_at and filed as one more
+  // revision. The live row moves only when someone publishes.
   async copyForward(bodyText, savedAt) {
     await this.ctx.storage.sql.exec(
       `INSERT INTO docs (id, body, saved_at) VALUES (?, ?, ?)
        ON CONFLICT (id) DO UPDATE SET body = excluded.body, saved_at = excluded.saved_at`,
-      'live',
+      'draft',
       bodyText,
       savedAt
     );
