@@ -1,0 +1,16 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "arka-dhama-stay",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": true,
+  "routes": [
+    { "pattern": "arkadhama.supertalk.dev", "custom_domain": true }
+  ],
+  "durable_objects": {
+    "bindings": [{ "name": "LEDGER", "class_name": "Ledger" }]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["Ledger"] }
+  ]
+}
