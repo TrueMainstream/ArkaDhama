@@ -34,6 +34,7 @@ let doc = null;
 let riverId = "training"; // the centre river opens selected
 let layer = "top"; // the pane the tabs have chosen for new blocks
 let selectedId = null;
+let boardEvents = null; // { upcoming, past } from the events board, or null while loading
 
 const riversNav = document.getElementById("rivers");
 const pane = document.getElementById("pane");
@@ -118,14 +119,19 @@ function blockElement(block) {
       tag.textContent = "Mask";
       el.append(tag);
     } else if (block.type === "event") {
-      // A labelled rectangle, never a post list. The tag rides the mask's
-      // label style; the border is inline because editor.css is another
-      // lane's file.
+      // A window onto the events board, placed like an image. The posts
+      // are filled in once the board list has loaded. Posting stays on
+      // the board.
       el.style.border = "2px solid #f4efe6";
+      el.style.overflow = "auto";
+      el.style.padding = "8px 10px";
       const tag = document.createElement("span");
       tag.className = "mask-tag";
       tag.textContent = `Events · ${block.show}`;
-      el.append(tag);
+      const list = document.createElement("div");
+      list.className = "event-posts";
+      fillEventWindow(list, block);
+      el.append(tag, list);
     }
   }
   el.title = block.id;
@@ -323,9 +329,9 @@ function addBlock(type) {
     block.h = 40;
   }
   if (type === "event") {
-    block.y = 40;
+    block.y = 72;
     block.w = 84;
-    block.h = 30;
+    block.h = 22;
     block.show = "upcoming";
     block.limit = 5;
   }
@@ -396,6 +402,57 @@ function drawTabs() {
     button.setAttribute("aria-pressed", button.dataset.layer === layer ? "true" : "false");
   }
   syncMaskButton();
+  if (doc) drawPanes();
+}
+
+// The events board returns { upcoming, past }, each post
+// { event_date, title, description }. show "upcoming" uses the first list.
+// show "all" uses both, soonest date first. limit caps the count.
+function postsForBlock(block) {
+  if (!boardEvents) return [];
+  const upcoming = Array.isArray(boardEvents.upcoming) ? boardEvents.upcoming : [];
+  const past = Array.isArray(boardEvents.past) ? boardEvents.past : [];
+  const posts = block.show === "all" ? upcoming.concat(past) : upcoming;
+  const ordered = posts
+    .filter((post) => post && typeof post.event_date === "string")
+    .sort((a, b) => (a.event_date < b.event_date ? -1 : a.event_date > b.event_date ? 1 : 0));
+  const limit = typeof block.limit === "number" ? block.limit : ordered.length;
+  return ordered.slice(0, Math.max(0, limit));
+}
+
+function fillEventWindow(list, block) {
+  list.replaceChildren();
+  if (boardEvents === null) {
+    const note = document.createElement("p");
+    note.textContent = "Loading events…";
+    list.append(note);
+    return;
+  }
+  const posts = postsForBlock(block);
+  if (posts.length === 0) {
+    const note = document.createElement("p");
+    note.textContent = "Nothing announced yet.";
+    list.append(note);
+    return;
+  }
+  for (const post of posts) {
+    const item = document.createElement("p");
+    const when = document.createElement("strong");
+    when.textContent = post.event_date;
+    item.append(when, document.createTextNode(` ${post.title || ""}`));
+    list.append(item);
+  }
+}
+
+async function loadBoardEvents() {
+  try {
+    const response = await fetch("/api/board-events");
+    if (!response.ok) throw new Error(`Board list answered ${response.status}.`);
+    boardEvents = await response.json();
+  } catch (error) {
+    console.warn("Events board unavailable.", error);
+    boardEvents = { upcoming: [], past: [] };
+  }
   if (doc) drawPanes();
 }
 
@@ -567,6 +624,7 @@ async function start() {
     doc = structuredClone(window.seedDoc()); // the copy is the only state
     setStatus("Not saved yet.");
   }
+  loadBoardEvents();
   buildRiverButtons();
   drawRiverButtons();
   drawTabs();

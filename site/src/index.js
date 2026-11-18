@@ -20,6 +20,15 @@ export default {
     ) {
       return env.PRESENT.fetch(request);
     }
+    // The events board lives on its own host. The editor reads its public
+    // list through this path so the browser stays on one origin. Posting
+    // and deleting stay on the board. This path never writes.
+    if (url.pathname === "/api/board-events" && request.method === "GET") {
+      const response = await fetch("https://arka-events.truemainstream.workers.dev/api/events");
+      const headers = new Headers(response.headers);
+      headers.set("cache-control", "no-store");
+      return new Response(response.body, { status: response.status, headers });
+    }
     return env.ASSETS.fetch(request);
   },
 };

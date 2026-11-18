@@ -127,6 +127,10 @@ button:disabled { opacity: 0.38; cursor: default; }
 .block.is-text { white-space: pre-wrap; line-height: 1.42; height: auto; }
 .block.is-image { background-size: cover; background-position: center; }
 .block.is-mask { border: 2px solid #f4efe6; background: transparent; }
+.block.is-event { font-size: 0.85rem; line-height: 1.35; }
+.event-posts { margin-top: 18px; }
+.event-posts p { margin: 0 0 0.4rem; }
+.event-posts strong { display: block; font-size: 0.68rem; letter-spacing: 0.08em; font-weight: 500; opacity: 0.8; }
 
 /* The mask reveal: a full-pane layer clipped to the mask's rectangle,
    holding copies of the still layer's blocks at their own percentages.

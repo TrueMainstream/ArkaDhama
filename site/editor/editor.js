@@ -7,7 +7,9 @@
 // the document carries. One canvas shows the selected river. The tabs at
 // the foot of the page switch which layer of that same canvas is showing,
 // the way a spreadsheet switches sheets. A mask exists only on the top
-// layer, and it is a hole onto the still layer at the same place.
+// layer, and it is a hole onto the still layer at the same place. An event
+// block may sit on either layer; the canvas draws it as a labelled
+// rectangle, and fetching the posts stays the public page's job.
 // Placement is by percentage fields. There is no drag.
 
 const RIVER_NAMES = [
@@ -32,6 +34,7 @@ let doc = null;
 let riverId = "training"; // the centre river opens selected
 let layer = "top"; // the pane the tabs have chosen for new blocks
 let selectedId = null;
+let boardEvents = null; // { upcoming, past } from the events board, or null while loading
 
 const riversNav = document.getElementById("rivers");
 const pane = document.getElementById("pane");
@@ -115,6 +118,20 @@ function blockElement(block) {
       tag.className = "mask-tag";
       tag.textContent = "Mask";
       el.append(tag);
+    } else if (block.type === "event") {
+      // A window onto the events board, placed like an image. The posts
+      // are filled in once the board list has loaded. Posting stays on
+      // the board.
+      el.style.border = "2px solid #f4efe6";
+      el.style.overflow = "auto";
+      el.style.padding = "8px 10px";
+      const tag = document.createElement("span");
+      tag.className = "mask-tag";
+      tag.textContent = `Events · ${block.show}`;
+      const list = document.createElement("div");
+      list.className = "event-posts";
+      fillEventWindow(list, block);
+      el.append(tag, list);
     }
   }
   el.title = block.id;
@@ -161,6 +178,7 @@ function drawFields() {
 
   if (block.type === "text") fieldsBox.append(textFields(block));
   if (block.type === "image") fieldsBox.append(srcField(block));
+  if (block.type === "event") fieldsBox.append(eventFields(block));
   fieldsBox.append(hrefField(block));
 }
 
@@ -241,6 +259,31 @@ function srcField(block) {
   return fieldRow("Source", input);
 }
 
+// An event block has no copy of its own to edit: Show picks which posts,
+// Limit how many, and the canvas label follows Show.
+function eventFields(block) {
+  const box = document.createElement("div");
+
+  box.append(selectField("Show", block.show,
+    [["Upcoming", "upcoming"], ["All", "all"]],
+    (value) => { block.show = value; drawPanes(); }));
+
+  const limit = document.createElement("input");
+  limit.type = "number";
+  limit.min = "1";
+  limit.max = "20";
+  limit.step = "1";
+  limit.value = String(block.limit ?? "");
+  limit.addEventListener("input", () => {
+    const value = Number(limit.value);
+    if (!Number.isFinite(value)) return;
+    block.limit = Math.min(20, Math.max(1, value));
+  });
+  box.append(fieldRow("Limit", limit));
+
+  return box;
+}
+
 function hrefField(block) {
   const input = document.createElement("input");
   input.type = "text";
@@ -273,6 +316,7 @@ deleteButton.addEventListener("click", () => {
 document.getElementById("add-text").addEventListener("click", () => addBlock("text"));
 document.getElementById("add-image").addEventListener("click", () => addBlock("image"));
 addMaskButton.addEventListener("click", () => addBlock("mask"));
+document.getElementById("add-event").addEventListener("click", () => addBlock("event"));
 
 function addBlock(type) {
   const river = currentRiver();
@@ -283,6 +327,13 @@ function addBlock(type) {
     block.y = 25;
     block.w = 50;
     block.h = 40;
+  }
+  if (type === "event") {
+    block.y = 72;
+    block.w = 84;
+    block.h = 22;
+    block.show = "upcoming";
+    block.limit = 5;
   }
   if (type === "image") block.src = "/scroll-poc/media/trail.jpg";
   river[layer].push(block);
@@ -351,6 +402,57 @@ function drawTabs() {
     button.setAttribute("aria-pressed", button.dataset.layer === layer ? "true" : "false");
   }
   syncMaskButton();
+  if (doc) drawPanes();
+}
+
+// The events board returns { upcoming, past }, each post
+// { event_date, title, description }. show "upcoming" uses the first list.
+// show "all" uses both, soonest date first. limit caps the count.
+function postsForBlock(block) {
+  if (!boardEvents) return [];
+  const upcoming = Array.isArray(boardEvents.upcoming) ? boardEvents.upcoming : [];
+  const past = Array.isArray(boardEvents.past) ? boardEvents.past : [];
+  const posts = block.show === "all" ? upcoming.concat(past) : upcoming;
+  const ordered = posts
+    .filter((post) => post && typeof post.event_date === "string")
+    .sort((a, b) => (a.event_date < b.event_date ? -1 : a.event_date > b.event_date ? 1 : 0));
+  const limit = typeof block.limit === "number" ? block.limit : ordered.length;
+  return ordered.slice(0, Math.max(0, limit));
+}
+
+function fillEventWindow(list, block) {
+  list.replaceChildren();
+  if (boardEvents === null) {
+    const note = document.createElement("p");
+    note.textContent = "Loading events…";
+    list.append(note);
+    return;
+  }
+  const posts = postsForBlock(block);
+  if (posts.length === 0) {
+    const note = document.createElement("p");
+    note.textContent = "Nothing announced yet.";
+    list.append(note);
+    return;
+  }
+  for (const post of posts) {
+    const item = document.createElement("p");
+    const when = document.createElement("strong");
+    when.textContent = post.event_date;
+    item.append(when, document.createTextNode(` ${post.title || ""}`));
+    list.append(item);
+  }
+}
+
+async function loadBoardEvents() {
+  try {
+    const response = await fetch("/api/board-events");
+    if (!response.ok) throw new Error(`Board list answered ${response.status}.`);
+    boardEvents = await response.json();
+  } catch (error) {
+    console.warn("Events board unavailable.", error);
+    boardEvents = { upcoming: [], past: [] };
+  }
   if (doc) drawPanes();
 }
 
@@ -522,6 +624,7 @@ async function start() {
     doc = structuredClone(window.seedDoc()); // the copy is the only state
     setStatus("Not saved yet.");
   }
+  loadBoardEvents();
   buildRiverButtons();
   drawRiverButtons();
   drawTabs();
