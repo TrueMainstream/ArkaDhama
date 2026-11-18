@@ -68,17 +68,35 @@ function renderDoc(doc) {
   }
 }
 
-// doc.js is a module and may finish after this file. Wait for it, then
-// draw once. A second pass would duplicate the scenes.
+// The published document is the one the rivers carry: whatever Publish in
+// the editor last snapshotted. A 404, an unreachable worker, or a body
+// without rivers falls through to the seed, and doc.js is a module that may
+// finish after this file, so the seed is awaited only when it is needed.
+// Either way the page draws once; a second pass would duplicate the scenes.
+async function fetchPublished() {
+  try {
+    const response = await fetch("/api/published");
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (data && Array.isArray(data.rivers)) return data;
+    if (data && data.body && Array.isArray(data.body.rivers)) return data.body;
+  } catch (error) {
+    console.warn("Published document unavailable.", error);
+  }
+  return null;
+}
+
 async function drawSeed() {
-  if (!(window.emptyDoc && window.seedDoc)) {
+  let doc = await fetchPublished();
+  if (doc === null && !(window.emptyDoc && window.seedDoc)) {
     try {
       await import("../present/doc.js");
     } catch (error) {
       console.warn("Presentation document unavailable.", error);
     }
   }
-  if (window.emptyDoc && window.seedDoc) renderDoc(window.seedDoc());
+  if (doc === null && window.emptyDoc && window.seedDoc) doc = window.seedDoc();
+  if (doc) renderDoc(doc);
   bindEventsWindow();
 }
 
