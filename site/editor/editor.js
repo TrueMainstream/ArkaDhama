@@ -43,6 +43,7 @@ const fieldsBox = document.getElementById("block-fields");
 const addMaskButton = document.getElementById("add-mask");
 const deleteButton = document.getElementById("delete-selected");
 const saveButton = document.getElementById("save");
+const publishButton = document.getElementById("publish");
 const revertButton = document.getElementById("revert");
 const historyButton = document.getElementById("history");
 const statusLine = document.getElementById("status");
@@ -503,6 +504,20 @@ saveButton.addEventListener("click", async () => {
   } catch (error) {
     console.warn("Save failed.", error);
     setStatus("Save failed.");
+  }
+});
+
+// Save is only the draft: the rivers page keeps whatever was published
+// last. Publish snapshots the stored draft as the published document; it
+// sends nothing, so on failure the page is exactly as it was.
+publishButton.addEventListener("click", async () => {
+  try {
+    const response = await fetch("/api/publish", { method: "POST" });
+    if (!response.ok) throw new Error(`POST /api/publish answered ${response.status}.`);
+    setStatus("Published.");
+  } catch (error) {
+    console.warn("Publish failed.", error);
+    setStatus("Publish failed.");
   }
 });
 
