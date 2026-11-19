@@ -208,6 +208,77 @@ body { overflow: hidden; }
 [data-plate="h"] .waters { background: linear-gradient(180deg, #1d4a78, #02182e); }
 [data-plate="i"] .waters { background: linear-gradient(200deg, #8aa4c4, #16365c 54%, #02182e); }
 
+/* The still layer: the river's other page. It sits under the colour and
+   never scrolls. Nothing on it is seen directly — the colour is whole —
+   so a mask can open it only through a clipped copy of it, and only ever
+   this river's copy: the layer lives inside the channel, inside the
+   shoreline. */
+.still {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* A placed block: left, top, and width come inline as percentages of the
+   channel. In the channel it stands above the colour and under the words;
+   inside the still layer it waits behind the colour; inside a mask's copy
+   it is the hole's content. It never takes the lane's pointer events, so
+   the scroller beneath keeps scrolling. */
+.obj {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Cream on the river's colour. Paragraph breaks in the block's text are
+   kept as breaks. */
+.obj-text {
+  color: var(--ink);
+  font-size: 1.02rem;
+  line-height: 1.45;
+  white-space: pre-line;
+}
+
+.obj-image {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* An event window: framed as a card on the river's colour, like the
+   posted event cards above. Cream ink, a light border, a faint cream
+   wash — no black panel. Its height is the block's h, held exactly, so a
+   long list is read through a window the editor sized. */
+.event-window {
+  border: 1px solid rgba(244, 239, 230, 0.65);
+  background: rgba(244, 239, 230, 0.08);
+  padding: 0.9rem 1rem;
+  overflow: hidden;
+  font-size: 0.95rem;
+}
+
+.event-window p {
+  margin: 0 0 0.55em;
+  color: var(--ink);
+  line-height: 1.4;
+}
+
+.event-window p:last-child { margin-bottom: 0; }
+
+.event-window strong { font-weight: 600; }
+
+/* A mask's hole: the still layer copied in full, clipped to the mask's
+   rectangle. It rides above the scroller, so the scrolling words can
+   never cover it, and it clips nothing else — the channel's shoreline
+   clip stays the outer edge. */
+.mask-reveal {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
 .pager {
   display: none;
   position: fixed;
