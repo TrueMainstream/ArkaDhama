@@ -3,11 +3,80 @@
 const stage = document.getElementById("stage");
 const channels = [...document.querySelectorAll(".channel")];
 
-// A presentation document, when the present lane has provided one, fills the
-// three scrollers before the Events window is located below. Text blocks in
-// river.top become scenes; image, mask, and bottom blocks wait for later
-// rounds. Without a document the rivers run empty and the loop is unchanged.
+// A presentation document, when the present lane has provided one, fills
+// each channel on two levels before the Events window is located below.
+// Text blocks in river.top become the scenes; image and event blocks are
+// placed by their own rectangles; masks in river.top open holes onto the
+// still layer, which carries river.bottom behind the river's colour.
+// Without a document the rivers run empty and the loop is unchanged.
 const RIVER_SECTIONS = { events: "#events", training: "#training", books: "#products" };
+
+// A block's x, y, w, h are percentages of its channel, set inline. Text
+// takes its h as a floor and may grow past it; image and event blocks hold
+// their h exactly. This is the editor's geometry, read back unchanged.
+function hasGeometry(block) {
+  return ["x", "y", "w", "h"].every(
+    (field) => typeof block[field] === "number" && Number.isFinite(block[field])
+  );
+}
+
+function place(el, block) {
+  if (block.id) el.id = block.id;
+  el.style.left = `${block.x}%`;
+  el.style.top = `${block.y}%`;
+  el.style.width = `${block.w}%`;
+  return el;
+}
+
+function placedElement(block) {
+  if (!block || !hasGeometry(block)) return null;
+  if (block.type === "text") {
+    if (typeof block.text !== "string") return null;
+    const el = document.createElement("div");
+    el.className = "obj obj-text";
+    el.style.minHeight = `${block.h}%`;
+    el.textContent = block.text;
+    return place(el, block);
+  }
+  if (block.type === "image") {
+    if (typeof block.src !== "string" || !block.src) return null;
+    const el = document.createElement("div");
+    el.className = "obj obj-image";
+    el.style.height = `${block.h}%`;
+    el.style.backgroundImage = `url("${block.src}")`;
+    return place(el, block);
+  }
+  if (block.type === "event") {
+    const el = document.createElement("div");
+    el.className = "obj event-window";
+    el.style.height = `${block.h}%`;
+    el.dataset.show = block.show === "all" ? "all" : "upcoming";
+    if (typeof block.limit === "number" && Number.isFinite(block.limit)) {
+      el.dataset.limit = String(block.limit);
+    }
+    return place(el, block);
+  }
+  return null; // a mask never renders as content of its own
+}
+
+// A mask is a hole, not a picture: the still layer copied in full and
+// clipped to the mask's rectangle, the same inset the editor draws. The
+// copy rides above the scroller — the scrolling words can never cover a
+// hole — and the channel's own shoreline clip stays the outer edge, so a
+// hole cannot reach into another river.
+function maskReveal(mask, still) {
+  const reveal = document.createElement("div");
+  reveal.className = "mask-reveal";
+  reveal.setAttribute("aria-hidden", "true");
+  reveal.style.clipPath =
+    `inset(${mask.y}% ${100 - mask.x - mask.w}% ${100 - mask.y - mask.h}% ${mask.x}%)`;
+  for (const block of still.children) {
+    const copy = block.cloneNode(true);
+    copy.removeAttribute("id");
+    reveal.append(copy);
+  }
+  return reveal;
+}
 
 function renderDoc(doc) {
   const rivers = (doc && doc.rivers) || {};
@@ -19,9 +88,33 @@ function renderDoc(doc) {
       : rivers[river];
     const top = found && found.top;
     if (!scroller || !Array.isArray(top)) continue;
+
+    // The still layer sits behind the colour and never scrolls: the whole
+    // of river.bottom, placed but uncut. Nothing on it is seen directly;
+    // each mask below opens a clipped copy of it, so a hole can only ever
+    // show this river's own still layer, never a neighbour's.
+    const still = document.createElement("div");
+    still.className = "still";
+    if (Array.isArray(found.bottom)) {
+      for (const block of found.bottom) {
+        const object = placedElement(block);
+        if (object) still.append(object);
+      }
+    }
+    channel.insertBefore(still, channel.querySelector(".waters"));
+
     let firstScene = true;
     for (const block of top) {
-      if (!block || block.type !== "text" || typeof block.text !== "string") continue;
+      const type = block && block.type;
+      if (type !== "text" && type !== "image" && type !== "event") continue;
+      if (type !== "text") {
+        // Top-layer objects stand above the colour and under the words,
+        // placed like still blocks but never hidden behind the colour.
+        const object = placedElement(block);
+        if (object) channel.insertBefore(object, scroller);
+        continue;
+      }
+      if (typeof block.text !== "string") continue;
       const article = document.createElement("article");
       article.className = "scene";
       // The first text block of a river is its title scene: col-head with
@@ -65,6 +158,14 @@ function renderDoc(doc) {
       firstScene = false;
       scroller.append(article);
     }
+
+    // Masks are holes rather than content, so they are drawn once the
+    // still layer they copy is complete. They are skipped above so a mask
+    // block never becomes a scene or an object.
+    for (const mask of top) {
+      if (!mask || mask.type !== "mask" || !hasGeometry(mask)) continue;
+      channel.append(maskReveal(mask, still));
+    }
   }
 }
 
@@ -98,6 +199,65 @@ async function drawSeed() {
   if (doc === null && window.emptyDoc && window.seedDoc) doc = window.seedDoc();
   if (doc) renderDoc(doc);
   bindEventsWindow();
+  if (document.querySelector(".event-window")) loadBoardEvents();
+}
+
+// The board list is read once, after the document has drawn every event
+// window it calls for — on the still layer, on the top layer, and in the
+// copies a mask carries. All of them are filled from the one answer.
+// Posting and deleting stay on the board; this page only reads.
+async function loadBoardEvents() {
+  let board = null;
+  try {
+    const response = await fetch("/api/board-events");
+    if (!response.ok) throw new Error(`Board list answered ${response.status}.`);
+    board = await response.json();
+  } catch (error) {
+    console.warn("Events board unavailable.", error);
+  }
+  for (const window of document.querySelectorAll(".event-window")) {
+    window.replaceChildren();
+    if (!board) {
+      appendNote(window, "Events unavailable.");
+      continue;
+    }
+    const limitRaw = window.dataset.limit;
+    const limit = limitRaw === undefined ? undefined : Number(limitRaw);
+    const posts = boardPosts(board, window.dataset.show, limit);
+    if (posts.length === 0) {
+      appendNote(window, "Nothing announced yet.");
+      continue;
+    }
+    for (const post of posts) {
+      const item = document.createElement("p");
+      const when = document.createElement("strong");
+      when.textContent = post.event_date;
+      item.append(when, document.createTextNode(` ${post.title || ""}`));
+      window.append(item);
+    }
+  }
+}
+
+function appendNote(window, text) {
+  const note = document.createElement("p");
+  note.textContent = text;
+  window.append(note);
+}
+
+// The board answers { upcoming, past }, each post { event_date, title }.
+// show "upcoming" reads the first list; show "all" reads both, soonest
+// event_date first; the block's limit caps the count.
+function boardPosts(board, show, limit) {
+  const upcoming = Array.isArray(board.upcoming) ? board.upcoming : [];
+  const past = Array.isArray(board.past) ? board.past : [];
+  const posts = show === "all" ? upcoming.concat(past) : upcoming;
+  const ordered = posts
+    .filter((post) => post && typeof post.event_date === "string")
+    .sort((a, b) => (a.event_date < b.event_date ? -1 : a.event_date > b.event_date ? 1 : 0));
+  const cap = typeof limit === "number" && Number.isFinite(limit)
+    ? Math.max(0, limit)
+    : ordered.length;
+  return ordered.slice(0, cap);
 }
 
 let events = -1;
