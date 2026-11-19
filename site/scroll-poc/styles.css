@@ -108,7 +108,12 @@ body { overflow: hidden; }
 
 .stage.is-river .scroller {
   pointer-events: auto;
-  right: auto;
+  /* The frame loop narrows this box to the river's waist. Left that way,
+     the wheel lands on the stage, which does not scroll, and the words
+     below the fold never move. The lane's own clip is the river edge. */
+  left: 0 !important;
+  width: auto !important;
+  right: 0 !important;
 }
 
 .col-head, .scene-copy, .col-end {
@@ -276,7 +281,11 @@ body { overflow: hidden; }
   position: absolute;
   inset: 0;
   z-index: 2;
+  /* The hole covers the lane, so a wheel landing on it must fall through
+     to the scroller. pointer-events: none is not enough: the wheel still
+     stops on this layer and the words underneath never move. */
   pointer-events: none;
+  touch-action: none;
 }
 
 .pager {
