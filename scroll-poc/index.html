@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Srinivas Arka</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  /* The classic site stays reachable above the rivers: one light bar,
+     desktop-first. It is not a phone layout. */
+  .site-nav {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 10px 26px;
+    padding: 13px 28px;
+    background: #efe8da;
+    border-bottom: 1px solid rgba(74, 53, 36, 0.25);
+    font-size: 14px;
+    letter-spacing: 0.02em;
+  }
+  .site-nav a {
+    color: #4a3524;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .site-nav a:hover {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+</style>
+</head>
+<body>
+<nav class="site-nav" aria-label="The classic Srinivas Arka site">
+  <a href="https://www.srinivasarka.org/">Home</a>
+  <a href="https://www.srinivasarka.org/about">About</a>
+  <a href="https://www.srinivasarka.org/events-news">Events &amp; News</a>
+  <a href="https://www.srinivasarka.org/methods-training">Methods &amp; Training</a>
+  <a href="https://www.srinivasarka.org/communities">Communities</a>
+  <a href="https://www.srinivasarka.org/arka-dhama">Arka Dhama</a>
+  <a href="https://www.srinivasarka.org/videos">Videos</a>
+  <a href="https://www.srinivasarka.org/books">Books</a>
+  <a href="https://www.srinivasarka.org/contact">Contact</a>
+</nav>
+<div class="stage" id="stage">
+  <section class="channel col-body" id="events" data-theme="body" data-plate="a" tabindex="0" aria-label="Events">
+    <div class="portrait" data-window="portrait" style="background-image:url(media/arka-standing.png)"></div>
+    <div class="portrait" data-window="india" style="background-image:url(media/india.jpg)"></div>
+    <div class="waters"></div>
+    <div class="scroller"></div>
+  </section>
+
+  <section class="channel col-mind" id="training" data-theme="mind" data-plate="d" tabindex="0" aria-label="Mind">
+    <div class="waters"></div>
+    <div class="scroller"></div>
+  </section>
+
+  <section class="channel col-spirit" id="products" data-theme="spirit" data-plate="g" tabindex="0" aria-label="Spirit">
+    <div class="waters"></div>
+    <div class="scroller"></div>
+  </section>
+</div>
+
+<!-- The Events window. White keeps that river's colour, black lets the
+     portrait behind it show. Coordinates are stage pixels, set from main.js;
+     the channel itself keeps its single shoreline polygon as its clip, and
+     the hole's own points follow the shoreline as the river opens.
+     The mask region is explicit: a percentage region with userSpaceOnUse
+     resolves to nothing against an HTML element, which would empty the
+     whole mask and hide the river's colour. -->
+<svg class="mask-defs" aria-hidden="true" focusable="false">
+  <defs>
+    <mask id="events-mask" maskUnits="userSpaceOnUse" x="-1000" y="-1000" width="6000" height="6000">
+      <rect class="mask-keep" x="0" y="0" width="10000" height="10000" fill="#fff"/>
+      <polygon class="mask-hole" points="0,0" fill="#000"/>
+    </mask>
+  </defs>
+</svg>
+
+<nav class="pager" id="pager" aria-label="Choose a column">
+  <button type="button" data-go="body" aria-pressed="true">Events</button>
+  <button type="button" data-go="mind">Training</button>
+  <button type="button" data-go="spirit">Products</button>
+</nav>
+
+<!-- The presentation document. Both scripts are modules so they run in
+     this order after the page is parsed: doc.js attaches the seed, then
+     main.js draws it. A classic script cannot read the exports. -->
+<script type="module" src="../present/doc.js"></script>
+<script type="module" src="main.js"></script>
+</body>
+</html>
