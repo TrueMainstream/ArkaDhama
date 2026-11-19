@@ -114,7 +114,9 @@ button:disabled { opacity: 0.38; cursor: default; }
    y percentages land blocks where they say, far down the lane. */
 .pane {
   position: relative;
-  height: 1400px;
+  /* A floor. editor.js grows this to the lowest block so the last line
+     is inside the pane and the lane can scroll to it. */
+  min-height: 1400px;
   border: 1px solid var(--line);
   border-radius: 4px;
   overflow: hidden;
