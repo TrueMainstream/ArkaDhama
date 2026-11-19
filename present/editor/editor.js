@@ -77,6 +77,19 @@ function drawPanes() {
   // On the top layer a mask is a hole onto this river's still layer, at
   // the same place. The other layer is not a second page underneath.
   if (layer === "top") drawMaskReveals(river);
+  fitPane();
+}
+
+// The pane starts at 1400px. A block whose text runs past that edge was
+// clipped, and the lane could not scroll to it because the pane itself
+// ended. Grow the pane to the lowest block, with room under the last line.
+function fitPane() {
+  let bottom = 1400;
+  for (const block of pane.querySelectorAll(".block")) {
+    const end = block.offsetTop + block.offsetHeight;
+    if (end + 48 > bottom) bottom = end + 48;
+  }
+  pane.style.height = `${bottom}px`;
 }
 
 function drawMaskReveals(river) {
