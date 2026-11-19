@@ -16,7 +16,9 @@ export default {
       url.pathname === "/api/doc" ||
       url.pathname === "/api/history" ||
       url.pathname === "/api/revert" ||
-      url.pathname === "/api/restore"
+      url.pathname === "/api/restore" ||
+      url.pathname === "/api/published" ||
+      url.pathname === "/api/publish"
     ) {
       return env.PRESENT.fetch(request);
     }
