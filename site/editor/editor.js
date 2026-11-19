@@ -87,7 +87,7 @@ function fitPane() {
   let bottom = 1400;
   for (const block of pane.querySelectorAll(".block")) {
     const end = block.offsetTop + block.offsetHeight;
-    if (end + 48 > bottom) bottom = end + 48;
+    if (end + 160 > bottom) bottom = end + 160;
   }
   pane.style.height = `${bottom}px`;
 }
